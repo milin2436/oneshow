@@ -32,11 +32,7 @@ users           list login users
 
 update          update token
 
-uu              download myself
-
 auth            get a auth for new user
-
-upload          upload a little text file to onedrive
 
 su              swich to other logined user
 

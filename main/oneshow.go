@@ -243,6 +243,7 @@ func setFuns(ct *cmd.Context) {
 	}
 
 	//next pro
+    
 	pro = new(cmd.Program)
 	pro.Name = "update"
 	pro.Desc = "update token"
@@ -264,32 +265,6 @@ func setFuns(ct *cmd.Context) {
 			return
 		}
 		fmt.Printf("%-30s%s", "new token:", tk)
-	}
-
-	//next pro
-	pro = new(cmd.Program)
-	pro.Name = "uu"
-	pro.Desc = "download myself"
-	pro.Usage = "usage: " + pro.Name
-	pro.ParamDefMap = map[string]*cmd.ParamDef{}
-
-	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		Name:      "h",
-		LongName:  "help",
-		NeedValue: false,
-		Desc:      "print help"}
-
-	ct.CmdMap[pro.Name] = pro
-	pro.Cmd = func(pro *cmd.Program) {
-		cli := one.NewOneClient()
-		wk := one.NewDWorker()
-		wk.HTTPCli = cli.HTTPClient
-		wk.AuthSve = cli
-		wk.DownloadDir = "."
-		err := wk.Download("https://cc.54ml.win/fserver/deploy/oneshow")
-		if err != nil {
-			fmt.Println("err = ", err)
-		}
 	}
 
 	//next download
@@ -378,6 +353,7 @@ func setFuns(ct *cmd.Context) {
 	}
 
 	//next upload little text file
+    /*
 	pro = new(cmd.Program)
 	pro.Name = "upload"
 	pro.Desc = "upload a little text file to onedrive"
@@ -421,6 +397,8 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("upload file to failed")
 		}
 	}
+    */
+
 	//next upload local file or dir
 	pro = new(cmd.Program)
 	pro.Name = "u"
