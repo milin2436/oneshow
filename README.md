@@ -14,35 +14,34 @@
 执行oneshow回车
 ```
 HELP ===========================
-mon version 2021-05-18 22:04:16 
+mon version 2021-07-02 12:16:55 
 ================================
 
 
+auth            get a auth for new user
+
 u               upload a file or dir to onedrive
 
-search          search files by key
+su              swich to other logined user
 
 mv              move file to other dir
 
 ls              list onedrive path
 
+info            show onedrive info
+
 d               download a file or dir or URL to local
+
+web             run this http super serivce (beta version)
 
 users           list login users
 
-update          update token
-
-auth            get a auth for new user
-
-su              swich to other logined user
-
-info            show onedrive info
-
-web             run this http super serivce
-
 saveUser        save current user to name
 
+search          search files by key
+
 rm              remove a file or dir to trash
+
 ```
 
 通过oneshow auth增加一个用户的帐号配置，当前只支持linux系统。
