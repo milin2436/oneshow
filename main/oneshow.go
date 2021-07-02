@@ -242,31 +242,6 @@ func setFuns(ct *cmd.Context) {
 		fmt.Printf("%-20s%s\n", "trash", humanShow(drive.Quota.Deleted))
 	}
 
-	//next pro
-    
-	pro = new(cmd.Program)
-	pro.Name = "update"
-	pro.Desc = "update token"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]"
-	pro.ParamDefMap = map[string]*cmd.ParamDef{}
-
-	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		Name:      "h",
-		LongName:  "help",
-		NeedValue: false,
-		Desc:      "print help"}
-
-	ct.CmdMap[pro.Name] = pro
-	pro.Cmd = func(pro *cmd.Program) {
-		cli := one.NewOneClient()
-		tk, err := cli.UpdateToken()
-		if err != nil {
-			fmt.Println("err = ", err)
-			return
-		}
-		fmt.Printf("%-30s%s", "new token:", tk)
-	}
-
 	//next download
 	pro = new(cmd.Program)
 	pro.Name = "d"
@@ -478,7 +453,7 @@ func setFuns(ct *cmd.Context) {
 	}
 	pro = new(cmd.Program)
 	pro.Name = "web"
-	pro.Desc = "run this http super serivce"
+	pro.Desc = "run this http super serivce (beta version)"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
