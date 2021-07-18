@@ -2,8 +2,10 @@ package one
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -13,9 +15,9 @@ const configFile = ".od.json"
 func findConfigFile() string {
 	buff, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		home := os.Getenv("HOME")
+		home, _ := os.UserHomeDir()
 		if home != "" {
-			buff, err = ioutil.ReadFile(home + "/" + configFile)
+			buff, err = ioutil.ReadFile(filepath.Join(home, configFile))
 			if err == nil {
 				return string(buff)
 			}
@@ -43,8 +45,13 @@ func getConfigAuthToken() *AuthToken {
 
 //SaveToken2Home home
 func SaveToken2Home(token *AuthToken) error {
-	home := os.Getenv("HOME")
-	pcfg := home + "/" + configFile
+	home, _ := os.UserHomeDir()
+	pcfg := ""
+	if home != "" {
+		pcfg = filepath.Join(home, configFile)
+	} else {
+		return errors.New("can not found home dir")
+	}
 	return SaveToken2Config(token, pcfg)
 }
 

@@ -11,6 +11,6 @@ clean :
 install :
 	upx $(out)
 win :
-	GOOS=windows GOARCH=amd64 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=v0.1.1 build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out).exe
+	GOOS=windows GOARCH=386 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=v0.1.1 build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out).exe
 static :
 	CGO_ENABLED=0 go build -ldflags "-s -w" -o $(out)

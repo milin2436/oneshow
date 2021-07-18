@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 
@@ -463,8 +464,8 @@ func (cli *OneClient) Download(file string, downloadDir string) {
 	wk.Download(dri.DownloadURL)
 }
 
-func callShellCB(cmd string, URL string) error {
-	mycmd := exec.Command(cmd, URL)
+func callShellCB(cmd string, URL ...string) error {
+	mycmd := exec.Command(cmd, URL...)
 	err := mycmd.Start()
 	go func() {
 		err = mycmd.Wait()
@@ -490,7 +491,12 @@ func (cli *OneClient) DoAutoForNewUser() {
 	go func() {
 		time.Sleep(time.Second * 2)
 		autoURL := cli.GetAuthCodeURL()
-		callShellCB("xdg-open", autoURL)
+		if runtime.GOOS == "linux" {
+			callShellCB("xdg-open", autoURL)
+		} else {
+			autoURL = strings.ReplaceAll(autoURL, "&", "^&")
+			callShellCB("cmd", "/C", "start", autoURL)
+		}
 	}()
 	respURL := cli.GetOneDriveAppInfo()["redirect_uri"]
 	u, _ := url.Parse(respURL)

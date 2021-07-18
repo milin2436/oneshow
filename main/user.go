@@ -12,19 +12,19 @@ const config string = ".od.json."
 const configFile string = ".od.json"
 
 func ListUsers() ([]string, error) {
-	home := os.Getenv("HOME")
+	home, _ := os.UserHomeDir()
 	return loopDir(home)
 }
 func SaveUser(user string) error {
-	home := os.Getenv("HOME")
-	userDec := home + "/" + config + user
-	userSrc := home + "/" + configFile
+	home, _ := os.UserHomeDir()
+	userDec := filepath.Join(home, config+user)
+	userSrc := filepath.Join(home, configFile)
 	return copyUser(userSrc, userDec)
 }
 func SwitchUser(user string) error {
-	home := os.Getenv("HOME")
-	userSrc := home + "/" + config + user
-	userDec := home + "/" + configFile
+	home, _ := os.UserHomeDir()
+	userDec := filepath.Join(home, config+user)
+	userSrc := filepath.Join(home, configFile)
 	return copyUser(userSrc, userDec)
 }
 func copyUser(userSrc string, userDec string) error {
