@@ -461,7 +461,10 @@ func (cli *OneClient) Download(file string, downloadDir string) {
 	wk.HTTPCli = cli.HTTPClient
 	wk.AuthSve = cli
 	wk.DownloadDir = downloadDir
-	wk.Download(dri.DownloadURL)
+	err = wk.Download(dri.DownloadURL)
+	if err != nil {
+		fmt.Println("failed on ", err, " for ", file)
+	}
 }
 
 func callShellCB(cmd string, URL ...string) error {

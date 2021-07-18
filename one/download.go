@@ -139,6 +139,7 @@ func (wk *DWorker) Download(url string) error {
 
 	rdFile := fileName + ".finfo"
 	curPosion := int64(0)
+	finish := false
 	var dfile, tfile *os.File
 	if PathExists(fileName) && PathExists(rdFile) {
 		log.Println("go on downloadfile file ", fileName)
@@ -151,7 +152,6 @@ func (wk *DWorker) Download(url string) error {
 		if err != nil {
 			return err
 		}
-		defer tfile.Close()
 		err, curPosion = readFilePosion(tfile)
 		if err != nil {
 			return err
@@ -177,7 +177,6 @@ func (wk *DWorker) Download(url string) error {
 		if err != nil {
 			return err
 		}
-		defer tfile.Close()
 		err = recordFilePosion(tfile, curPosion)
 		if err != nil {
 			return err
@@ -211,8 +210,7 @@ func (wk *DWorker) Download(url string) error {
 			log.Println("go on downloading url = ", url)
 		}
 		if err == nil {
-			//remove position file
-			os.Remove(rdFile)
+			finish = true
 			break
 		}
 		cnt++
@@ -227,6 +225,14 @@ func (wk *DWorker) Download(url string) error {
 			cnt = 0
 		}
 		log.Println("reset position ", curPosion, " start new http connct...")
+	}
+	//release resource
+	if tfile != nil {
+		tfile.Close()
+	}
+	//remove position file
+	if finish {
+		os.Remove(rdFile)
 	}
 	log.Println("done ==>", fileName)
 	return nil
