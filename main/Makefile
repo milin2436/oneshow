@@ -8,9 +8,14 @@ $(out) : $(objs)
 .PHONY : static
 clean :
 	rm -rf $(out)
+	rm -rf $(out).exe
 install :
 	upx $(out)
 win :
 	GOOS=windows GOARCH=386 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=v0.1.1 build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out).exe
 static :
 	CGO_ENABLED=0 go build -ldflags "-s -w" -o $(out)
+.PHONY : pkg
+pkg : $(out) win
+	zip -r -0 $(out)-amd64.zip $(out)
+	zip -r -0 $(out)-386.zip $(out).exe
