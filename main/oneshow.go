@@ -110,6 +110,20 @@ func batchDownload(cli *one.OneClient, curDir string, descDir string) {
 		cli.Download(path, descDir)
 	}
 }
+func Download(cli *one.OneClient, downloadDir string, dirPath string) {
+	dirPath = getOnedrivePath(dirPath)
+	info, err := cli.APIGetFile(cli.CurDriveID, dirPath)
+	if err != nil {
+		fmt.Println("err =", err)
+		return
+	}
+	go AutoUpdateToken()
+	if info.Folder != nil {
+		batchDownload(cli, dirPath, downloadDir)
+	} else {
+		cli.Download(dirPath, downloadDir)
+	}
+}
 
 func setFuns(ct *cmd.Context) {
 	ct.CmdMap = map[string]*cmd.Program{}
@@ -290,18 +304,7 @@ func setFuns(ct *cmd.Context) {
 			}
 			return
 		}
-		dirPath = getOnedrivePath(dirPath)
-		info, err := cli.APIGetFile(cli.CurDriveID, dirPath)
-		if err != nil {
-			fmt.Println("err =", err)
-			return
-		}
-		go AutoUpdateToken()
-		if info.Folder != nil {
-			batchDownload(cli, dirPath, downloadDir)
-		} else {
-			cli.Download(dirPath, downloadDir)
-		}
+		Download(cli, downloadDir, dirPath)
 	}
 
 	//next add new user
@@ -328,51 +331,51 @@ func setFuns(ct *cmd.Context) {
 	}
 
 	//next upload little text file
-    /*
-	pro = new(cmd.Program)
-	pro.Name = "upload"
-	pro.Desc = "upload a little text file to onedrive"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]"
-	pro.ParamDefMap = map[string]*cmd.ParamDef{}
-	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		Name:      "h",
-		LongName:  "help",
-		NeedValue: false,
-		Desc:      "print help"}
-	pro.ParamDefMap["f"] = &cmd.ParamDef{
-		Name:      "f",
-		LongName:  "fileName",
-		NeedValue: true,
-		Desc:      "fileName in onedrive,need full path, such as: /root/a.txt"}
-	pro.ParamDefMap["c"] = &cmd.ParamDef{
-		Name:      "c",
-		LongName:  "content",
-		NeedValue: true,
-		Desc:      "file content"}
+	/*
+		pro = new(cmd.Program)
+		pro.Name = "upload"
+		pro.Desc = "upload a little text file to onedrive"
+		pro.Usage = "usage: " + pro.Name + " [OPTION]"
+		pro.ParamDefMap = map[string]*cmd.ParamDef{}
+		pro.ParamDefMap["h"] = &cmd.ParamDef{
+			Name:      "h",
+			LongName:  "help",
+			NeedValue: false,
+			Desc:      "print help"}
+		pro.ParamDefMap["f"] = &cmd.ParamDef{
+			Name:      "f",
+			LongName:  "fileName",
+			NeedValue: true,
+			Desc:      "fileName in onedrive,need full path, such as: /root/a.txt"}
+		pro.ParamDefMap["c"] = &cmd.ParamDef{
+			Name:      "c",
+			LongName:  "content",
+			NeedValue: true,
+			Desc:      "file content"}
 
-	ct.CmdMap[pro.Name] = pro
-	pro.Cmd = func(pro *cmd.Program) {
-		if ct.ParamGroupMap["h"] != nil {
-			cmd.PrintCmdHelp(pro)
-			return
+		ct.CmdMap[pro.Name] = pro
+		pro.Cmd = func(pro *cmd.Program) {
+			if ct.ParamGroupMap["h"] != nil {
+				cmd.PrintCmdHelp(pro)
+				return
+			}
+			fn := ct.ParamGroupMap["f"]
+			content := ct.ParamGroupMap["c"]
+			if fn == nil || fn.Value == "" {
+				fmt.Println("file name can not be empty")
+				return
+			}
+			if content == nil || content.Value == "" {
+				fmt.Println("content can not be empty")
+				return
+			}
+			cli := one.NewOneClient()
+			_, err := cli.APIUploadText(cli.CurDriveID, fn.Value, content.Value)
+			if err != nil {
+				fmt.Println("upload file to failed")
+			}
 		}
-		fn := ct.ParamGroupMap["f"]
-		content := ct.ParamGroupMap["c"]
-		if fn == nil || fn.Value == "" {
-			fmt.Println("file name can not be empty")
-			return
-		}
-		if content == nil || content.Value == "" {
-			fmt.Println("content can not be empty")
-			return
-		}
-		cli := one.NewOneClient()
-		_, err := cli.APIUploadText(cli.CurDriveID, fn.Value, content.Value)
-		if err != nil {
-			fmt.Println("upload file to failed")
-		}
-	}
-    */
+	*/
 
 	//next upload local file or dir
 	pro = new(cmd.Program)
@@ -602,6 +605,11 @@ func setFuns(ct *cmd.Context) {
 		"detail",
 		false,
 		"show full path of file"}
+	pro.ParamDefMap["dn"] = &cmd.ParamDef{
+		"dn",
+		"download",
+		false,
+		"download file for search result,default save files to search-dn directory,and depend -d flag"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -625,8 +633,12 @@ func setFuns(ct *cmd.Context) {
 			return
 		}
 		detail := false
+		isDownload := false
 		if ct.ParamGroupMap["d"] != nil {
 			detail = true
+		}
+		if ct.ParamGroupMap["dn"] != nil {
+			isDownload = true
 		}
 		for _, v := range ret.Value {
 			pre := ""
@@ -638,11 +650,20 @@ func setFuns(ct *cmd.Context) {
 				}
 				pre = fullV.ParentReference.Path + "/"
 			}
-			Name := pre + v.Name
+			OName := pre + v.Name
+			Name := OName
 			if v.Folder != nil {
-				Name = v.Name + "/"
+				Name = Name + "/"
 			}
 			fmt.Printf("%s\n", Name)
+			if detail && isDownload {
+				pindex := strings.Index(OName, "/root:/")
+				if pindex > -1 {
+					desc := OName[pindex+6:]
+					fmt.Println("will download ", desc)
+					Download(cli, "search-dn", desc)
+				}
+			}
 		}
 	}
 	//next program
