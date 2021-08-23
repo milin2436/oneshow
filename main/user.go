@@ -23,8 +23,8 @@ func SaveUser(user string) error {
 }
 func SwitchUser(user string) error {
 	home, _ := os.UserHomeDir()
-	userDec := filepath.Join(home, config+user)
-	userSrc := filepath.Join(home, configFile)
+	userSrc := filepath.Join(home, config+user)
+	userDec := filepath.Join(home, configFile)
 	return copyUser(userSrc, userDec)
 }
 func copyUser(userSrc string, userDec string) error {
