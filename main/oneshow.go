@@ -107,6 +107,12 @@ func batchDownload(cli *one.OneClient, curDir string, descDir string) {
 			fmt.Println("create dir to failed ", err)
 			break
 		}
+		localFilePath := filepath.Join(descDir, f.Name)
+		localFilePathTmp := filepath.Join(descDir, f.Name+".finfo")
+		if one.PathExists(localFilePath) && !one.PathExists(localFilePathTmp) {
+			fmt.Println("The file exists,skip it : ", localFilePath)
+			continue
+		}
 		cli.Download(path, descDir)
 	}
 }
