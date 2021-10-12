@@ -17,5 +17,5 @@ static :
 	CGO_ENABLED=0 go build -ldflags "-s -w" -o $(out)
 .PHONY : pkg
 pkg : $(out) win
-	zip -r -0 $(out)-amd64.zip $(out)
-	zip -r -0 $(out)-386.zip $(out).exe
+	zip -r -0 $(out)-linux-amd64.zip $(out)
+	zip -r -0 $(out)-windows-386.zip $(out).exe
