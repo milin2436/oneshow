@@ -294,10 +294,10 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 	if err != nil {
 		return errors.New("seek error in " + err.Error())
 	}
-	buff := make([]byte, 1024)
+	buff := make([]byte, 102400)
 	//1M 1k*1024
 	readCnt := 0
-    t0 := time.Now()
+	t0 := time.Now()
 	for {
 		count, err := resp.Body.Read(buff)
 		if err != nil && err != io.EOF {
@@ -318,22 +318,22 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 			break
 		}
 		readCnt++
-		if readCnt > 1024 {
+		if readCnt > 512 {
 			err = recordFilePosion(tfile, position)
 			if err != nil {
 				log.Println("write postion to failed, err = ", err)
 			}
-            t1 := time.Now()
-            dis := t1.Sub(t0)
-            addData := position - wk.CurDownload.CurPosition
-            v := addData / dis.Milliseconds() * 1000
+			t1 := time.Now()
+			dis := t1.Sub(t0)
+			addData := position - wk.CurDownload.CurPosition
+			v := addData / dis.Milliseconds() * 1000
 
 			slog := fmt.Sprintf("download rate = %s/s,finish %s %s", humanShow(v), humanShow(position), percent(position, fileSize))
 			wk.CurDownload.CurPosition = position
 			wk.CurDownload.Desc = slog
 			log.Println(slog)
 			readCnt = 0
-            t0 = t1
+			t0 = t1
 		}
 	}
 	return nil
