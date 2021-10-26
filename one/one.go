@@ -52,11 +52,10 @@ func setProxy4Client(HC *chttp.HttpClient) {
 }
 
 //NewDefaultCli new a default oneshow client
-func NewDefaultCli() *OneClient {
+func NewDefaultCli() (*OneClient, error) {
 	log.SetFormatter(&log.JSONFormatter{})
 	log.SetReportCaller(true)
-	cli := NewOneClient()
-	return cli
+	return NewOneClient()
 }
 
 // GetAuthCodeURL gen an URL for get auto code from API
@@ -421,12 +420,11 @@ func NewBaseOneClient() *OneClient {
 }
 
 //NewOneClient instance a OneClient
-func NewOneClient() *OneClient {
+func NewOneClient() (*OneClient, error) {
 	cli := NewBaseOneClient()
 	tk := getConfigAuthToken()
 	if tk == nil {
-		fmt.Println("pls config a new user")
-		return nil
+		return nil, errors.New("pls config a new user")
 	}
 	cli.Token = tk
 	expires := time.Time(tk.ExpiresTime)
@@ -434,15 +432,14 @@ func NewOneClient() *OneClient {
 		core.Println("to expries time, update token")
 		newToken, err := cli.UpdateToken()
 		if err != nil {
-			fmt.Println("update user token to failed,err = ", err)
-			return nil
+			return nil, err
 		}
 		cli.Token = newToken
 	}
 	if tk != nil {
 		cli.CurDriveID = tk.DriveID
 	}
-	return cli
+	return cli, nil
 }
 
 //GetTokenHeader for other client
@@ -528,7 +525,7 @@ func mytest() {
 
 	//core.Debug = false
 
-	cli := NewOneClient()
+	cli, _ := NewOneClient()
 
 	//cli.GetAuthCode()
 	//cli.GetFirstToken()

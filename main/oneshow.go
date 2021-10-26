@@ -166,7 +166,11 @@ func setFuns(ct *cmd.Context) {
 		if strLen > 1 && dirPath[strLen-1] == '/' {
 			dirPath = dirPath[:strLen-1]
 		}
-		cli := one.NewOneClient()
+		cli, err := one.NewOneClient()
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
 		ret, err := cli.APIListFilesByPath(cli.CurDriveID, dirPath)
 		if err != nil {
 			fmt.Println("err = ", err)
@@ -219,7 +223,11 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("file path can not be empty")
 			return
 		}
-		cli := one.NewOneClient()
+		cli, err := one.NewOneClient()
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
 		ret, err := cli.APIDelFile(cli.CurDriveID, path)
 		if err != nil {
 			fmt.Println("err = ", err, " ret = ", ret)
@@ -247,7 +255,11 @@ func setFuns(ct *cmd.Context) {
 			cmd.PrintCmdHelp(pro)
 			return
 		}
-		cli := one.NewOneClient()
+		cli, err := one.NewOneClient()
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
 		drive, err := cli.APIGetMeDrive()
 		if err != nil {
 			fmt.Println("err = ", err)
@@ -296,7 +308,11 @@ func setFuns(ct *cmd.Context) {
 		if dirObj != nil {
 			downloadDir = dirObj.Value
 		}
-		cli = one.NewOneClient()
+		cli, err := one.NewOneClient()
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
 		//suport donwload by URL
 		URL := strings.ToLower(dirPath)
 		if strings.HasPrefix(URL, "http://") || strings.HasPrefix(URL, "https://") {
@@ -426,7 +442,11 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("source file can not be empty")
 			return
 		}
-		cli = one.NewOneClient()
+		cli, err := one.NewOneClient()
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
 		fileInfo, err := os.Stat(srcFile.Value)
 		if err != nil {
 			fmt.Println("file does not exit  : ", srcFile.Value)
@@ -628,7 +648,11 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("Key text cannot be empty")
 			return
 		}
-		cli = one.NewOneClient()
+		cli, err := one.NewOneClient()
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
 		ret, err := cli.APISearchByKey(cli.CurDriveID, key)
 		if err != nil {
 			fmt.Println("err = ", err)
@@ -717,7 +741,11 @@ func setFuns(ct *cmd.Context) {
 		if np != nil {
 			newName = np.Value
 		}
-		cli = one.NewOneClient()
+		cli, err := one.NewOneClient()
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
 		file := fp.Value
 		dir = getOnedrivePath(dir)
 		ifile, err := cli.APIGetFile(cli.CurDriveID, file)

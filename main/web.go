@@ -99,7 +99,11 @@ func GetQueryParamByKey(r *http.Request, key string) string {
 	return keys[0]
 }
 func Serivce(address string, https bool) {
-	cli = one.NewOneClient()
+	var err1 error
+	cli, err1 = one.NewOneClient()
+	if err1 != nil {
+		panic(err1.Error())
+	}
 	http.HandleFunc("/p", func(w http.ResponseWriter, r *http.Request) {
 		dd := GetQueryParamByKey(r, "d")
 		w.Write([]byte(dd))
