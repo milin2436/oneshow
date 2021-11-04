@@ -38,7 +38,7 @@ func getOnedrivePath(dirPath string) string {
 	}
 	return dirPath
 }
-func taskWorker(goid int) {
+func taskWorker(goid int, cli *one.OneClient) {
 	for {
 		msg, ok := <-taskQueue
 		if ok {
@@ -123,7 +123,7 @@ func Download(cli *one.OneClient, downloadDir string, dirPath string) {
 		fmt.Println("err =", err)
 		return
 	}
-	go AutoUpdateToken()
+	go AutoUpdateToken(cli)
 	if info.Folder != nil {
 		batchDownload(cli, dirPath, downloadDir)
 	} else {
@@ -452,7 +452,7 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("file does not exit  : ", srcFile.Value)
 			return
 		}
-		go AutoUpdateToken()
+		go AutoUpdateToken(cli)
 		if fileInfo.IsDir() {
 			tSize := ct.ParamGroupMap["t"]
 			if tSize != nil {
@@ -464,7 +464,7 @@ func setFuns(ct *cmd.Context) {
 			taskQueue = make(chan *OneTask, 5)
 			exitQueue = make(chan int)
 			for i := 0; i < threadCnt; i++ {
-				go taskWorker(i)
+				go taskWorker(i, cli)
 			}
 			batchUpload(cli, srcFile.Value, fn.Value)
 			close(taskQueue)

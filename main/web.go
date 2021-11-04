@@ -10,15 +10,15 @@ import (
 	"github.com/milin2436/oneshow/one"
 )
 
-var cli *one.OneClient
+//var cli *one.OneClient
 
-func AutoUpdateToken() {
+func AutoUpdateToken(cli *one.OneClient) {
 	for {
-		CheckToken()
+		CheckToken(cli)
 		time.Sleep(time.Minute)
 	}
 }
-func CheckToken() error {
+func CheckToken(cli *one.OneClient) error {
 	expires := time.Time(cli.Token.ExpiresTime)
 
 	expires = expires.Truncate(time.Minute)
@@ -65,7 +65,7 @@ func humanShow(isize int64) string {
 	return fmt.Sprintf("%.2fG", tmp)
 }
 
-func CmdLS(dirPath string) string {
+func CmdLS(dirPath string, cli *one.OneClient) string {
 	var buff bytes.Buffer
 	ret, err := cli.APIListFilesByPath(cli.CurDriveID, dirPath)
 	if dirPath != "/" {
@@ -100,7 +100,7 @@ func GetQueryParamByKey(r *http.Request, key string) string {
 }
 func Serivce(address string, https bool) {
 	var err1 error
-	cli, err1 = one.NewOneClient()
+	cli, err1 := one.NewOneClient()
 	if err1 != nil {
 		panic(err1.Error())
 	}
@@ -118,12 +118,12 @@ func Serivce(address string, https bool) {
 		if strLen > 1 && dirPath[strLen-1] == '/' {
 			dirPath = dirPath[:strLen-1]
 		}
-		err := CheckToken()
+		err := CheckToken(cli)
 		if err != nil {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		body := CmdLS(dirPath)
+		body := CmdLS(dirPath, cli)
 		html := OutHtml(body)
 		w.Write([]byte(html))
 	})
