@@ -48,13 +48,18 @@ func taskWorker(goid int, cli *one.OneClient) {
 				fmt.Println("file existed in onedrive,file = ", msg.Desc)
 				continue
 			}
-			err = msg.Cli.UploadBigFile(msg.Path, msg.Cli.CurDriveID, msg.Desc)
-			if err != nil {
-				fmt.Println("err = ", err, " in ", msg.Path)
-				exitQueue <- 0
-				continue
+			tryLimit := 500
+			for ti := 1; ti <= tryLimit; ti++ {
+				err = msg.Cli.UploadBigFile(msg.Path, msg.Cli.CurDriveID, msg.Desc)
+				if err != nil {
+					fmt.Println("err = ", err, " in ", msg.Path)
+					fmt.Printf("try again for the %dth time\n", ti)
+					//exitQueue <- 0
+				} else {
+					fmt.Println("done file = ", msg.Path)
+					break
+				}
 			}
-			fmt.Println("done file = ", msg.Path)
 		} else {
 			exitQueue <- goid
 			fmt.Println("will close go thread ,ID = ", goid)
