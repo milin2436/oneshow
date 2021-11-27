@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/milin2436/oneshow/one"
@@ -78,13 +79,13 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 	for _, v := range ret.Value {
 		if v.Folder != nil {
 			//<a src="" >$name</a>
-			s := fmt.Sprintf(`<a href="/vfs?path=%s">%s/</a>`, dirPath+v.Name, v.Name)
+			s := fmt.Sprintf(`<div><a href="/vfs?path=%s">%s/</a></div>`, dirPath+v.Name, v.Name)
 			buff.WriteString(s)
 		} else {
-			s := fmt.Sprintf(`<a href="%s" target="blank">%s</a> %s`, v.DownloadURL, v.Name, humanShow(v.Size))
+			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a></div>`, v.DownloadURL, v.Name, humanShow(v.Size), url.QueryEscape(v.DownloadURL))
 			buff.WriteString(s)
 		}
-		buff.WriteString("<br />")
+		//buff.WriteString("<br />")
 	}
 	return buff.String()
 }
@@ -124,6 +125,17 @@ func Serivce(address string, https bool) {
 			return
 		}
 		body := CmdLS(dirPath, cli)
+		html := OutHtml(body)
+		w.Write([]byte(html))
+	})
+	http.HandleFunc("/play", func(w http.ResponseWriter, r *http.Request) {
+		dirPath := GetQueryParamByKey(r, "id")
+		bodyTmp := `
+		<video width="640" height="480" controls="controls">
+			<source src="%s" />
+		</video>
+		`
+		body := fmt.Sprintf(bodyTmp, dirPath)
 		html := OutHtml(body)
 		w.Write([]byte(html))
 	})
