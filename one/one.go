@@ -551,5 +551,10 @@ func mytest() {
 		}
 	*/
 	//cli.APISearchByKey(cli.CurDriveID, "test")
+	err := cli.UploadSource("https://wppkg.baidupcs.com/issue/netdisk/gray/1.4.2/202112051127/tv_1.4.2.apk", cli.CurDriveID, "/test/tv_baidu.apk")
+	if err != nil {
+		fmt.Println("err = ", err)
+		return
+	}
 
 }
