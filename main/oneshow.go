@@ -452,12 +452,17 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("err = ", err)
 			return
 		}
+		go AutoUpdateToken(cli)
+		//handle http source
+		if strings.HasPrefix(srcFile.Value, "http://") || strings.HasPrefix(srcFile.Value, "https://") {
+			cli.UploadSourceTryAgain(srcFile.Value, cli.CurDriveID, fn.Value, 100)
+			return
+		}
 		fileInfo, err := os.Stat(srcFile.Value)
 		if err != nil {
 			fmt.Println("file does not exit  : ", srcFile.Value)
 			return
 		}
-		go AutoUpdateToken(cli)
 		if fileInfo.IsDir() {
 			tSize := ct.ParamGroupMap["t"]
 			if tSize != nil {

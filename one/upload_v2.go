@@ -106,6 +106,7 @@ func (cli *OneClient) checkSourceType(source string) (UploadTask, error) {
 }
 
 func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64, ed int64, fileSize int64, buff *bytes.Buffer) (*UploadURLResult, error) {
+	t0 := time.Now()
 	header := map[string]string{}
 	objs := new(UploadURLResult)
 
@@ -132,7 +133,6 @@ func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64,
 		req.Header.Add(k, v)
 	}
 	//req.ContentLength = len
-	t0 := time.Now()
 	resp, err := cli.HTTPClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -187,8 +187,23 @@ func (cli *OneClient) APIUploadSourcePart(task UploadTask, URL string, position 
 	core.Println("filesize ", fileSize)
 	return nil
 }
+func (cli *OneClient) UploadSourceTryAgain(source string, driveID string, oneDriveParentPath string, tryLimit int) error {
+	var err error
+	for ti := 1; ti <= tryLimit; ti++ {
+		err = cli.UploadSource(source, driveID, oneDriveParentPath)
+		if err != nil {
+			fmt.Println("err = ", err, " in ", source)
+			fmt.Printf("try again for the %dth time\n", ti)
+			//exitQueue <- 0
+		} else {
+			fmt.Println("done file = ", source)
+			return nil
+		}
+	}
+	return err
+}
 
-func (cli *OneClient) UploadSource(source string, driveID string, path string) error {
+func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParentPath string) error {
 	task, err := cli.checkSourceType(source)
 	if err != nil {
 		return err
@@ -197,6 +212,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, path string) e
 	if err != nil {
 		return err
 	}
+	oneDrivePath := filepath.Join(oneDriveParentPath, task.Name())
 	//find tmp file
 	parent := task.Parent()
 	fileInfo := filepath.Join(parent, task.Name()+TMP_FILE_FIX)
@@ -223,7 +239,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, path string) e
 		}
 	} else {
 		//new a upload
-		ret, err := cli.APICreateUploadSession(driveID, path)
+		ret, err := cli.APICreateUploadSession(driveID, oneDrivePath)
 		if err != nil {
 			return err
 		}
