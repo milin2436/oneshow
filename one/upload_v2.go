@@ -24,9 +24,67 @@ type UploadTask interface {
 	Open() error
 	Close() error
 	Init() error
-	Seek(position int64) error
+	SeekPosition(position int64) error
 	// len = end - start + 1
 	Read(buff *bytes.Buffer, start int64, end int64, len int64) error
+}
+
+type LocalFileUploadTask struct {
+	filePath   string
+	name       string
+	parentPath string
+	source     string
+	file       *os.File
+	fileSize   int64
+}
+
+func (task *LocalFileUploadTask) Parent() string {
+	if task.parentPath == "" {
+		task.parentPath = filepath.Dir(task.filePath)
+	}
+	return task.parentPath
+}
+func (task *LocalFileUploadTask) Name() string {
+	return task.name
+}
+func (task *LocalFileUploadTask) Size() int64 {
+	return task.fileSize
+}
+func (task *LocalFileUploadTask) Open() error {
+	file, err := os.Open(task.filePath)
+	if err != nil {
+		return err
+	}
+	task.file = file
+	return nil
+}
+func (task *LocalFileUploadTask) Close() error {
+	return task.file.Close()
+}
+func (task *LocalFileUploadTask) Init() error {
+	absSrcFile, err := filepath.Abs(task.source)
+	if err != nil {
+		return err
+	}
+	info, err := os.Stat(absSrcFile)
+	if err != nil {
+		return err
+	}
+	if info.IsDir() {
+		return errors.New("file is dir : " + absSrcFile)
+	}
+	task.fileSize = info.Size()
+	task.filePath = absSrcFile
+	task.name = info.Name()
+	return nil
+}
+func (task *LocalFileUploadTask) SeekPosition(position int64) error {
+	_, err := task.file.Seek(position, os.SEEK_SET)
+	return err
+}
+func (task *LocalFileUploadTask) Read(buff *bytes.Buffer, start int64, end int64, len int64) error {
+	_, err := io.CopyN(buff, task.file, len)
+	return err
 }
 
 type URLUploadTask struct {
@@ -64,7 +122,7 @@ func (task *URLUploadTask) Init() error {
 	task.FileSize = fileSize
 	return nil
 }
-func (task *URLUploadTask) Seek(position int64) error {
+func (task *URLUploadTask) SeekPosition(position int64) error {
 	return nil
 }
 
@@ -102,7 +160,10 @@ func (cli *OneClient) checkSourceType(source string) (UploadTask, error) {
 		task.URL = source
 		return task, nil
 	}
-	return nil, errors.New("can not find source type for " + source)
+	task := new(LocalFileUploadTask)
+	task.source = source
+	return task, nil
+	//return nil, errors.New("can not find source type for " + source)
 }
 
 func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64, ed int64, fileSize int64, buff *bytes.Buffer) (*UploadURLResult, error) {
@@ -156,7 +217,7 @@ func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64,
 	return objs, nil
 }
 func (cli *OneClient) APIUploadSourcePart(task UploadTask, URL string, position int64, fileSize int64) error {
-	err := task.Seek(position)
+	err := task.SeekPosition(position)
 	if err != nil {
 		return err
 	}
