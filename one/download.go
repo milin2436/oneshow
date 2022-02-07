@@ -188,6 +188,7 @@ func (wk *DWorker) Download(url string) error {
 	wk.CurDownload.CurPosition = curPosion
 	wk.CurDownload.Size = fileSize
 	log.Println("start ==>", url)
+	log.Println("File name ==>", fileName)
 	for {
 		err = wk.goonDownloadFile(url, curPosion, fileSize, dfile, tfile)
 		if err == nil && wk.cancelFlag {
