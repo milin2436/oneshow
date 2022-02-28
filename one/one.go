@@ -91,7 +91,7 @@ func (cli *OneClient) GetFirstToken(code string) error {
 	}
 	core.Println("first refresh token:", token.RefreshToken)
 	cli.Token = token
-	cli.SaveToken2Home(token)
+	cli.SaveToken2HomeDefault(token)
 	return nil
 }
 
@@ -109,13 +109,13 @@ func (cli *OneClient) UpdateToken() (*AuthToken, error) {
 		return nil, err
 	}
 	cli.Token = token
-	cli.SaveToken2Home(token)
+	cli.SaveToken2UserConfig(token)
 	core.Println(token.AccessToken)
 	return token, nil
 }
 
 //SaveToken2Home save token to local
-func (cli *OneClient) SaveToken2Home(token *AuthToken) {
+func (cli *OneClient) SaveToken2UserConfig(token *AuthToken) {
 	exTime := time.Now().Add(time.Second * time.Duration(token.ExpiresIn-60))
 	token.ExpiresTime = Timestamp(exTime)
 	dri, err := cli.APIGetMeDrive()
@@ -123,6 +123,17 @@ func (cli *OneClient) SaveToken2Home(token *AuthToken) {
 		token.DriveID = dri.ID
 	}
 	SaveToken2Home(token)
+}
+
+//SaveToken2Home save token to local
+func (cli *OneClient) SaveToken2HomeDefault(token *AuthToken) {
+	exTime := time.Now().Add(time.Second * time.Duration(token.ExpiresIn-60))
+	token.ExpiresTime = Timestamp(exTime)
+	dri, err := cli.APIGetMeDrive()
+	if err == nil {
+		token.DriveID = dri.ID
+	}
+	SaveToken2DefaultPath(token)
 }
 
 //GetOneDriveAppInfo setup application information
@@ -422,6 +433,7 @@ func NewBaseOneClient() *OneClient {
 //NewOneClient instance a OneClient
 func NewOneClient() (*OneClient, error) {
 	cli := NewBaseOneClient()
+	setCurUser()
 	tk := getConfigAuthToken()
 	if tk == nil {
 		return nil, errors.New("pls config a new user")

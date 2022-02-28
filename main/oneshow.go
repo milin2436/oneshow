@@ -623,6 +623,32 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("save to ", user)
 		}
 	}
+	//next program
+	pro = new(cmd.Program)
+	pro.Name = "who"
+	pro.Desc = "show current user name"
+	pro.Usage = "usage: " + pro.Name
+	pro.ParamDefMap = map[string]*cmd.ParamDef{}
+
+	pro.ParamDefMap["h"] = &cmd.ParamDef{
+		"h",
+		"help",
+		false,
+		"print help"}
+
+	ct.CmdMap[pro.Name] = pro
+	pro.Cmd = func(pro *cmd.Program) {
+		if ct.ParamGroupMap["h"] != nil {
+			cmd.PrintCmdHelp(pro)
+			return
+		}
+		userName, err := Who()
+		if err != nil {
+			fmt.Println("who command call failed, err = ", err)
+		} else {
+			fmt.Println("current user:", userName)
+		}
+	}
 
 	//next program
 	pro = new(cmd.Program)

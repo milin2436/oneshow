@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/milin2436/oneshow/one"
 )
 
 const config string = ".od.json."
@@ -23,9 +25,8 @@ func SaveUser(user string) error {
 }
 func SwitchUser(user string) error {
 	home, _ := os.UserHomeDir()
-	userSrc := filepath.Join(home, config+user)
-	userDec := filepath.Join(home, configFile)
-	return copyUser(userSrc, userDec)
+	decFile := filepath.Join(home, one.CurUser)
+	return ioutil.WriteFile(decFile, []byte(user), 0660)
 }
 func copyUser(userSrc string, userDec string) error {
 	src, err := os.Open(userSrc)
@@ -40,6 +41,12 @@ func copyUser(userSrc string, userDec string) error {
 	defer curFile.Close()
 	_, err = io.Copy(curFile, src)
 	return err
+}
+func Who() (string, error) {
+	home, _ := os.UserHomeDir()
+	decFile := filepath.Join(home, one.CurUser)
+	buff, err := ioutil.ReadFile(decFile)
+	return string(buff), err
 }
 func loopDir(dirName string) ([]string, error) {
 	li := []string{}
