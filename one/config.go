@@ -25,7 +25,7 @@ func setCurUser() {
 		userName = strings.TrimSpace(userName)
 		configFile = ConfigFileDefault + "." + userName
 	}
-	fmt.Println("using config = ", configFile)
+	//fmt.Println("using config = ", configFile)
 }
 func findConfigFile() string {
 	buff, err := ioutil.ReadFile(configFile)
@@ -84,7 +84,6 @@ func SaveToken2DefaultPath(token *AuthToken) error {
 
 //SaveToken2Config save to configure file
 func SaveToken2Config(token *AuthToken, configFile string) error {
-	fmt.Println("save token to config file ,path = ", configFile)
 	buff, err := json.Marshal(token)
 	if err != nil {
 		return err
