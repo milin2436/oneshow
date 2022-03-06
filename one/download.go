@@ -71,7 +71,7 @@ func ParseRangeCookie(strConRge string) (error, int64) {
 	if idx == -1 {
 		return errors.New("format error in " + strConRge), 0
 	}
-	strSize := strConRge[idx+1 : len(strConRge)]
+	strSize := strConRge[idx+1:]
 	ret, err := strconv.ParseInt(strSize, 10, 64)
 	return err, ret
 }
@@ -156,7 +156,7 @@ func (wk *DWorker) Download(url string) error {
 		if err != nil {
 			return err
 		}
-		log.Println(fmt.Sprintf("downloaded %d bytes (%s) for %s", curPosion, humanShow(curPosion), fileName))
+		log.Println(fmt.Sprintf("downloaded %d bytes (%s) for %s", curPosion, ViewHumanShow(curPosion), fileName))
 	} else if PathExists(fileName) && (!PathExists(rdFile)) {
 		//TODO nothing
 		log.Println("nothing for " + fileName)
@@ -263,7 +263,7 @@ func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (error, str
 		return errors.New("no support range"), "", 0
 	}
 	err, fileSize := ParseRangeCookie(strConRge)
-	log.Println("response header ", strConRge, " fileSize = ", humanShow(fileSize))
+	log.Println("response header ", strConRge, " fileSize = ", ViewHumanShow(fileSize))
 	if err != nil {
 		return err, "", 0
 	}
@@ -329,7 +329,7 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 			addData := position - wk.CurDownload.CurPosition
 			v := addData / dis.Milliseconds() * 1000
 
-			slog := fmt.Sprintf("download rate = %s/s,finish %s %s", humanShow(v), humanShow(position), percent(position, fileSize))
+			slog := fmt.Sprintf("download rate = %s/s,finish %s %s", ViewHumanShow(v), ViewHumanShow(position), ViewPercent(position, fileSize))
 			wk.CurDownload.CurPosition = position
 			wk.CurDownload.Desc = slog
 			log.Println(slog)
@@ -338,28 +338,6 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 		}
 	}
 	return nil
-}
-
-func humanShow(isize int64) string {
-	size := float64(isize)
-	if size < 1024 {
-		return fmt.Sprintf("%.2fbytes", size)
-	}
-	tmp := size / 1024.0
-	if tmp < 1024 {
-		return fmt.Sprintf("%.2fK", tmp)
-	}
-	tmp = tmp / 1024.0
-	if tmp < 1024 {
-		return fmt.Sprintf("%.2fM", tmp)
-	}
-	tmp = tmp / 1024.0
-	return fmt.Sprintf("%.2fG", tmp)
-}
-func percent(sub, total int64) string {
-	fsub := float64(sub)
-	ftotal := float64(total)
-	return fmt.Sprintf("%.1f%%", fsub/ftotal*100.0)
 }
 
 func NewDWorker() *DWorker {

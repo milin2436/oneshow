@@ -190,7 +190,7 @@ func setFuns(ct *cmd.Context) {
 				if v.Folder != nil {
 					Name = v.Name + "/"
 				}
-				fmt.Printf("%-10s%-16s%-28s%-100s\n", humanShow(v.Size), v.CreatedBy.User.DisplayName, dsTime, Name)
+				fmt.Printf("%-10s%-16s%-28s%-100s\n", one.ViewHumanShow(v.Size), v.CreatedBy.User.DisplayName, dsTime, Name)
 			}
 		} else {
 			for _, v := range ret.Value {
@@ -273,10 +273,10 @@ func setFuns(ct *cmd.Context) {
 		fmt.Printf("%-20s%s\n", "drive type", drive.DriveType)
 		fmt.Printf("%-20s%s\n", "state", drive.Quota.State)
 		fmt.Printf("%-20s%s\n", "ower", drive.Owner.User.DisplayName)
-		fmt.Printf("%-20s%s\n", "total", humanShow(drive.Quota.Total))
-		fmt.Printf("%-20s%s\n", "used", humanShow(drive.Quota.Used))
-		fmt.Printf("%-20s%s\n", "Remaing", humanShow(drive.Quota.Remaining))
-		fmt.Printf("%-20s%s\n", "trash", humanShow(drive.Quota.Deleted))
+		fmt.Printf("%-20s%s\n", "total", one.ViewHumanShow(drive.Quota.Total))
+		fmt.Printf("%-20s%s\n", "used", one.ViewHumanShow(drive.Quota.Used))
+		fmt.Printf("%-20s%s\n", "Remaing", one.ViewHumanShow(drive.Quota.Remaining))
+		fmt.Printf("%-20s%s\n", "trash", one.ViewHumanShow(drive.Quota.Deleted))
 	}
 
 	//next download

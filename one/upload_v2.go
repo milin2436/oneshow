@@ -209,7 +209,7 @@ func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64,
 	dis := time.Now().Sub(t0)
 	v := len / dis.Milliseconds() * 1000
 	remainTime := (fileSize - ed - 1) / v
-	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.Name(), humanShow(v), percent(ed+1, fileSize), remainTime, humanShow(fileSize))
+	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.Name(), ViewHumanShow(v), ViewPercent(ed+1, fileSize), remainTime, ViewHumanShow(fileSize))
 
 	if err != nil {
 		return nil, err

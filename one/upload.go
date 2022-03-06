@@ -109,7 +109,7 @@ func (cli *OneClient) apiUploadFilePart(task *CurTask, URL string, file *os.File
 	dis := time.Now().Sub(t0)
 	v := len / dis.Milliseconds() * 1000
 	remainTime := (fileSize - ed - 1) / v
-	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.FileName, humanShow(v), percent(ed+1, fileSize), remainTime, humanShow(fileSize))
+	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.FileName, ViewHumanShow(v), ViewPercent(ed+1, fileSize), remainTime, ViewHumanShow(fileSize))
 
 	if err != nil {
 		return nil, err

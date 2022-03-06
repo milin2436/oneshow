@@ -49,22 +49,6 @@ func OutHtml(body string) string {
 	ret := fmt.Sprintf(html, body)
 	return ret
 }
-func humanShow(isize int64) string {
-	size := float64(isize)
-	if size < 1024 {
-		return fmt.Sprintf("%.2fbytes", size)
-	}
-	tmp := size / 1024.0
-	if tmp < 1024 {
-		return fmt.Sprintf("%.2fK", tmp)
-	}
-	tmp = tmp / 1024.0
-	if tmp < 1024 {
-		return fmt.Sprintf("%.2fM", tmp)
-	}
-	tmp = tmp / 1024.0
-	return fmt.Sprintf("%.2fG", tmp)
-}
 
 func CmdLS(dirPath string, cli *one.OneClient) string {
 	var buff bytes.Buffer
@@ -82,7 +66,7 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 			s := fmt.Sprintf(`<div><a href="/vfs?path=%s">%s/</a></div>`, dirPath+v.Name, v.Name)
 			buff.WriteString(s)
 		} else {
-			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a></div>`, v.DownloadURL, v.Name, humanShow(v.Size), url.QueryEscape(v.DownloadURL))
+			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a></div>`, v.DownloadURL, v.Name, one.ViewHumanShow(v.Size), url.QueryEscape(v.DownloadURL))
 			buff.WriteString(s)
 		}
 		//buff.WriteString("<br />")
