@@ -11,7 +11,9 @@ import (
 	"github.com/milin2436/oneshow/one"
 )
 
-//var cli *one.OneClient
+//like "https://localhost/fetch?url="
+
+const acceleratedAPI string = ""
 
 func AutoUpdateToken(cli *one.OneClient) {
 	for {
@@ -49,6 +51,14 @@ func OutHtml(body string) string {
 	ret := fmt.Sprintf(html, body)
 	return ret
 }
+func acceleratedURL(hurl string) string {
+	if acceleratedAPI == "" {
+		return hurl
+	}
+	p := url.QueryEscape(hurl)
+	return acceleratedAPI + p
+
+}
 
 func CmdLS(dirPath string, cli *one.OneClient) string {
 	var buff bytes.Buffer
@@ -66,7 +76,7 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 			s := fmt.Sprintf(`<div><a href="/vfs?path=%s">%s/</a></div>`, dirPath+v.Name, v.Name)
 			buff.WriteString(s)
 		} else {
-			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a></div>`, v.DownloadURL, v.Name, one.ViewHumanShow(v.Size), url.QueryEscape(v.DownloadURL))
+			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a> <a href="%s" target="blank">adownload</a> </div>`, v.DownloadURL, v.Name, one.ViewHumanShow(v.Size), url.QueryEscape(v.DownloadURL), acceleratedURL(v.DownloadURL))
 			buff.WriteString(s)
 		}
 		//buff.WriteString("<br />")
@@ -119,7 +129,7 @@ func Serivce(address string, https bool) {
 			<source src="%s" />
 		</video>
 		`
-		body := fmt.Sprintf(bodyTmp, dirPath)
+		body := fmt.Sprintf(bodyTmp, acceleratedURL(dirPath))
 		html := OutHtml(body)
 		w.Write([]byte(html))
 	})
