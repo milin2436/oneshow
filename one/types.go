@@ -40,6 +40,11 @@ type AuthToken struct {
 	DriveID     string    `json:"drive_id"`
 }
 
+//oneshow application config
+type OneShowConfig struct {
+	AcceleratedAPI string `json:"accelerated_api"`
+}
+
 // Error is returned from one drive when things go wrong
 type Error struct {
 	ErrorInfo struct {

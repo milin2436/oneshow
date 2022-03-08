@@ -12,6 +12,9 @@ import (
 
 const CurUser string = ".od_cur_user.id"
 const ConfigFileDefault string = ".od.json"
+const one_show_config_file string = ".oneshow.json"
+
+var ONE_SHOW_CONFIG *OneShowConfig
 
 var configFile string = ".od.json"
 
@@ -33,7 +36,6 @@ func findConfigFile() string {
 		home, _ := os.UserHomeDir()
 		if home != "" {
 			fullPath := filepath.Join(home, configFile)
-			_, err := os.Open(fullPath)
 			buff, err = ioutil.ReadFile(fullPath)
 			if err == nil {
 				return string(buff)
@@ -42,6 +44,23 @@ func findConfigFile() string {
 		return ""
 	}
 	return string(buff)
+}
+func InitOneShowConfig() {
+	//HOME USER PWD SHELL
+	ONE_SHOW_CONFIG = new(OneShowConfig)
+	home, _ := os.UserHomeDir()
+	if home != "" {
+		fullPath := filepath.Join(home, one_show_config_file)
+		buff, err := ioutil.ReadFile(fullPath)
+		if err != nil {
+			return
+		}
+		err = json.Unmarshal(buff, ONE_SHOW_CONFIG)
+		if err != nil {
+			fmt.Println("err = ", err)
+			return
+		}
+	}
 }
 func getConfigAuthToken() *AuthToken {
 	//HOME USER PWD SHELL

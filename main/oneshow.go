@@ -811,6 +811,7 @@ func setFuns(ct *cmd.Context) {
 }
 func main() {
 	core.Debug = false
+	one.InitOneShowConfig()
 	ct := cmd.NewContext()
 	setFuns(ct)
 	ct.Run()

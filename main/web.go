@@ -13,7 +13,7 @@ import (
 
 //like "https://localhost/fetch?url="
 
-const acceleratedAPI string = ""
+//const acceleratedAPI string = ""
 
 func AutoUpdateToken(cli *one.OneClient) {
 	for {
@@ -52,12 +52,11 @@ func OutHtml(body string) string {
 	return ret
 }
 func acceleratedURL(hurl string) string {
-	if acceleratedAPI == "" {
+	if one.ONE_SHOW_CONFIG.AcceleratedAPI == "" {
 		return hurl
 	}
 	p := url.QueryEscape(hurl)
-	return acceleratedAPI + p
-
+	return one.ONE_SHOW_CONFIG.AcceleratedAPI + p
 }
 
 func CmdLS(dirPath string, cli *one.OneClient) string {
@@ -102,6 +101,36 @@ func Serivce(address string, https bool) {
 	http.HandleFunc("/p", func(w http.ResponseWriter, r *http.Request) {
 		dd := GetQueryParamByKey(r, "d")
 		w.Write([]byte(dd))
+	})
+
+	http.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
+		fetchURL := GetQueryParamByKey(r, "url")
+		method := GetQueryParamByKey(r, "method")
+		if method == "" {
+			method = "GET"
+		}
+		if fetchURL == "" {
+			w.Write([]byte("fetch method : url can not be empty."))
+			return
+		}
+		headers := map[string]string{}
+		for k, v := range r.Header {
+			headers[k] = v[0]
+		}
+		fetchResp, err := cli.HTTPClient.HttpRequest(method, fetchURL, headers, "")
+		if err != nil {
+			w.Write([]byte(err.Error()))
+			return
+		}
+		//respose line
+		w.WriteHeader(fetchResp.StatusCode)
+
+		//header
+		for k, v := range fetchResp.Header {
+			w.Header().Add(k, v[0])
+		}
+		//body
+		_, err = io.Copy(w, fetchResp.Body)
 	})
 
 	http.HandleFunc("/vfs", func(w http.ResponseWriter, r *http.Request) {
