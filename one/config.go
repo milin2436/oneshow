@@ -68,7 +68,7 @@ func InitOneShowConfig() {
 func setupOneShowConfig() {
 	cfg := ONE_SHOW_CONFIG
 	if cfg.Client_ID != "" && cfg.ClientSecret != "" {
-		fmt.Println("using a third-party client :", cfg.Client_ID)
+		//fmt.Println("using a third-party client :", cfg.Client_ID)
 		CLIENT_ID = cfg.Client_ID
 		CLIENT_SECRET = cfg.ClientSecret
 		if cfg.Scope != "" {
