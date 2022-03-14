@@ -60,6 +60,20 @@ func InitOneShowConfig() {
 			fmt.Println("err = ", err)
 			return
 		}
+		//set application config
+		setupOneShowConfig()
+	}
+}
+
+func setupOneShowConfig() {
+	cfg := ONE_SHOW_CONFIG
+	if cfg.Client_ID != "" && cfg.ClientSecret != "" {
+		fmt.Println("using a third-party client :", cfg.Client_ID)
+		CLIENT_ID = cfg.Client_ID
+		CLIENT_SECRET = cfg.ClientSecret
+		if cfg.Scope != "" {
+			SCOPE = cfg.Scope
+		}
 	}
 }
 func getConfigAuthToken() *AuthToken {

@@ -43,6 +43,9 @@ type AuthToken struct {
 //oneshow application config
 type OneShowConfig struct {
 	AcceleratedAPI string `json:"accelerated_api"`
+	Client_ID      string `json:"client_id"`
+	ClientSecret   string `json:"client_secret"`
+	Scope          string `json:"scope"`
 }
 
 // Error is returned from one drive when things go wrong

@@ -21,11 +21,11 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-const CLIENT_ID = "51d4977e-8740-41c9-956b-bc5fa4f58806"
+var CLIENT_ID string = "51d4977e-8740-41c9-956b-bc5fa4f58806"
 
-const CLIENT_SECRET = "jvv9q-o9Yt2bxg.6kRmOLi~5xhQDrN.5._"
+var CLIENT_SECRET string = "jvv9q-o9Yt2bxg.6kRmOLi~5xhQDrN.5._"
 
-const SCOPE = "Files.Read Files.ReadWrite Files.Read.All Files.ReadWrite.All offline_access Sites.Read.All User.Read"
+var SCOPE string = "Files.Read Files.ReadWrite Files.Read.All Files.ReadWrite.All offline_access Sites.Read.All User.Read"
 
 const CALLBACK_URL = "http://localhost:4444/result"
 

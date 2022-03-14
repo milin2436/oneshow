@@ -26,6 +26,3 @@ func ViewPercent(sub, total int64) string {
 	return fmt.Sprintf("%.1f%%", fsub/ftotal*100.0)
 }
 
-func ViewIsVideo(fileName string) bool {
-	return true
-}
