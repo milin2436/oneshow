@@ -528,10 +528,13 @@ func (cli *OneClient) DoAutoForNewUser() {
 		}()
 	})
 	err := server.ListenAndServe()
-	if err != nil {
-		fmt.Println("server err = ", err)
+	if err != nil && http.ErrServerClosed == err {
+		fmt.Println("done all")
+		return
 	}
-	fmt.Println("done all")
+	if err != nil {
+		fmt.Println("run http server to failed,server err = ", err)
+	}
 }
 func mytest() {
 
