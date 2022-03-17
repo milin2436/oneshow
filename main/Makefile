@@ -1,7 +1,7 @@
 buildTime=$(shell date +"%F %T")
 out=oneshow
 objs=oneshow.go web.go user.go
-ver=v0.1.5
+ver=v0.1.7
 $(out) : $(objs)
 	echo $(buildTime)
 	go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out)
