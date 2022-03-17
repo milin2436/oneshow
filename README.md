@@ -91,7 +91,7 @@ list onedrive path
 
 ```
 
-搜索关键字为key的所有名录和文件，加-d可显示文件或目录的全路径：
+搜索网盘内关键字为key的所有名录和文件，加-d可显示文件或目录的全路径：
 ```
 ./oneshow -d search key
 
@@ -104,5 +104,7 @@ list onedrive path
 
 # 构建
 
-建议在linux下进行构建代码，其他平台没有进行过测试。下载代码后直接进入main文件夹执行make即可。
+建议在linux下进行构建代码，下载代码后直接进入main文件夹执行make即可。
+发布的二进制程序提供了linux和windows版本，但是最近的更改都没有在windows上进行测试。
+对于mac用户，请自己进行构建。
 
