@@ -108,3 +108,10 @@ list onedrive path
 发布的二进制程序提供了linux和windows版本，但是最近的更改都没有在windows上进行测试。
 对于mac用户，请自己进行构建。
 
+# 版权声明
+
+该软件使用rclone部分代码，基于MIT协议做出该声明，这部分代码用于解析onedrive api返回的json数据对应的结构体。使用的代码为
+https://github.com/rclone/rclone/blob/master/backend/onedrive/api/types.go
+rclone项目地址：
+https://github.com/rclone/rclone/
+
