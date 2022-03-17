@@ -15,33 +15,36 @@
 执行oneshow回车
 ```
 HELP ===========================
-oneshow version v0.1.1 build time:2021-07-20 12:56:53 
+oneshow version v0.1.7 build time:2022-03-17 13:32:18 
 ================================
 
+
+ls              list onedrive path
+
+rm              remove a file or dir to trash
+
+auth            get a auth for new user
+
+users           list login users
+
+su              swich to other logined user
+
+who             show current user name
 
 info            show onedrive info
 
 d               download a file or dir or URL to local
 
-auth            get a auth for new user
-
 u               upload a file or dir to onedrive
 
 web             run this http super serivce (beta version)
 
-su              swich to other logined user
-
 saveUser        save current user to name
-
-rm              remove a file or dir to trash
-
-users           list login users
 
 search          search files by key
 
 mv              move file to other dir
 
-ls              list onedrive path
 
 ```
 
@@ -60,6 +63,46 @@ list onedrive path
 ```
 其中path参数一定要为onedrive全路径,例如查询根目录，执行oneshow ls -l /  
 
+查看当前用户网盘容量和使用情况使用：
+
+```
+./oneshow info
+
+```
+
+查看当前使用的用户的别名:
+```
+./oneshow who
+
+```
+
+删除目标文件/test，放入到回收站使用：
+```
+./oneshow rm /test
+```
+上传/test下所有文件到/other目录使用:
+```
+./oneshow u -s /test -f /other
+
+```
+下面下载/test下的所有文件，到当前目录，可用-d ”下载目录“，来指定目录:
+```
+./oneshow d /test
+
+```
+
+搜索关键字为key的所有名录和文件，加-d可显示文件或目录的全路径：
+```
+./oneshow -d search key
+
+```
+打开web服务，绑定到127.0.0.1:4444，通过访问，http://127.0.0.1:4444/vfs 浏览网盘和下载文件：
+```
+./oneshow web  -u 127.0.0.1:4444
+
+```
+
 # 构建
 
 建议在linux下进行构建代码，其他平台没有进行过测试。下载代码后直接进入main文件夹执行make即可。
+
