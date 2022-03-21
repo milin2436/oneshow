@@ -10,8 +10,12 @@ import (
 	"strings"
 )
 
+//CurUser who is the current user
 const CurUser string = ".od_cur_user.id"
+
+//ConfigFileDefault default user when login
 const ConfigFileDefault string = ".od.json"
+
 const one_show_config_file string = ".oneshow.json"
 
 var ONE_SHOW_CONFIG *OneShowConfig
@@ -19,6 +23,7 @@ var ONE_SHOW_CONFIG *OneShowConfig
 var configFile string = ".od.json"
 
 func setCurUser() {
+	suser := os.Getenv("oneshowuser")
 	home, _ := os.UserHomeDir()
 	buff, err := ioutil.ReadFile(filepath.Join(home, CurUser))
 	if err != nil {
@@ -27,6 +32,11 @@ func setCurUser() {
 		userName := string(buff)
 		userName = strings.TrimSpace(userName)
 		configFile = ConfigFileDefault + "." + userName
+	}
+	suser = strings.TrimSpace(suser)
+	if suser != "" {
+		configFile = ConfigFileDefault + "." + suser
+		fmt.Println("using config = ", configFile)
 	}
 	//fmt.Println("using config = ", configFile)
 }
@@ -45,6 +55,8 @@ func findConfigFile() string {
 	}
 	return string(buff)
 }
+
+//InitOneShowConfig load oneshow config information
 func InitOneShowConfig() {
 	//HOME USER PWD SHELL
 	ONE_SHOW_CONFIG = new(OneShowConfig)
@@ -104,6 +116,8 @@ func SaveToken2Home(token *AuthToken) error {
 	}
 	return SaveToken2Config(token, pcfg)
 }
+
+//SaveToken2DefaultPath save config when first login
 func SaveToken2DefaultPath(token *AuthToken) error {
 	home, _ := os.UserHomeDir()
 	pcfg := ""

@@ -10,26 +10,38 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/net/webdav"
 )
 
+//OneFileSystem onedrive file system for webdav
 type OneFileSystem struct {
 	Cache  map[string]*OneFile
 	Client *OneClient
 }
+
+//OneFile onedrive file for webdav
 type OneFile struct {
-	Client   *OneClient
-	Fs       *OneFileSystem
-	FullPath string
-	item     *Item
-	Position int64
-	Buff     *bytes.Buffer
+	Client     *OneClient
+	Fs         *OneFileSystem
+	FullPath   string
+	item       *Item
+	Position   int64
+	Buff       *bytes.Buffer
+	createTime *time.Time
 }
 
+var cacheMutex *sync.RWMutex = &sync.RWMutex{}
+
+//MB byte unit
 const MB int = 1048576
+
+//KB byte unit
 const KB int = 1024
+
+//DefaultBuffSize default buffer size
 const DefaultBuffSize int = 100 * KB
 
 func (fs *OneFileSystem) newOneFileByItem(i *Item, fullPath string) *OneFile {
@@ -41,12 +53,24 @@ func (fs *OneFileSystem) newOneFileByItem(i *Item, fullPath string) *OneFile {
 	return of
 }
 
+//CacheItem cache item Object
 func (fs *OneFileSystem) CacheItem(name string, item *Item) *OneFile {
 	fmt.Println("cache item :", name)
 	of := fs.newOneFileByItem(item, name)
+	cur := time.Now()
+	of.createTime = &cur
+	cacheMutex.Lock()
 	fs.Cache[name] = of
+	cacheMutex.Unlock()
 	return of
 }
+func (fs *OneFileSystem) deleteItem(name string) {
+	cacheMutex.Lock()
+	delete(fs.Cache, name)
+	cacheMutex.Unlock()
+}
+
+//Copy clone
 func (fs *OneFileSystem) Copy(cache *OneFile) *OneFile {
 	ret := new(OneFile)
 	ret.item = cache.item
@@ -55,7 +79,7 @@ func (fs *OneFileSystem) Copy(cache *OneFile) *OneFile {
 	ret.FullPath = cache.FullPath
 	return ret
 }
-func (fs *OneFileSystem) CacheItemCheckExist(name string, item *Item) *OneFile {
+func (fs *OneFileSystem) cacheItemCheckExist(name string, item *Item) *OneFile {
 	of := fs.Cache[name]
 	if of == nil {
 		return fs.CacheItem(name, item)
@@ -73,14 +97,29 @@ func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
 		}
 		//cache
 		of = fs.CacheItem(name, info)
+	} else {
+		//Update the cache more than 40 minutes to ensure that the download address is valid
+		if time.Now().Sub(*of.createTime).Minutes() > 40 {
+			fmt.Println("update cache, name = ", name)
+			fs.deleteItem(name)
+			return fs.getFileFromCache(name)
+		}
 	}
 	if of != nil {
-		//TODO copy a clone
+		//copy a clone,make position correct
 		of = fs.Copy(of)
 	}
 	return of, nil
 }
 
+func isIncludeOp(op int, flag int) bool {
+	if (flag & op) == op {
+		return true
+	}
+	return false
+}
+
+//Mkdir create a directory
 func (fs *OneFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	fmt.Println("mkdir name ", name)
 	name = filepath.Clean(name)
@@ -91,12 +130,7 @@ func (fs *OneFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMod
 	return err
 }
 
-func isIncludeOp(op int, flag int) bool {
-	if (flag & op) == op {
-		return true
-	}
-	return false
-}
+//OpenFile create or write or read file
 func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
 	fmt.Println("open file", name)
 	if isIncludeOp(os.O_CREATE, flag) {
@@ -118,26 +152,31 @@ func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, pe
 	return nil, errors.New("No support")
 }
 
+//RemoveAll Move files and directories to the recycle bin
 func (fs *OneFileSystem) RemoveAll(ctx context.Context, name string) error {
 	fmt.Println("rm name :", name)
 	_, err := fs.Client.APIDelFile(fs.Client.CurDriveID, name)
 	return err
 }
 
+//Rename rename file
 func (fs *OneFileSystem) Rename(ctx context.Context, oldName, newName string) error {
 	return errors.New("No support Rename")
 }
 
+//Stat return information of name
 func (fs *OneFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 	fmt.Println("stat file", name)
 	dirPath := getOnedrivePath(name)
 	return fs.getFileFromCache(dirPath)
 }
 
+//write Now no support write
 func (of *OneFile) Write(p []byte) (n int, err error) {
 	return 0, errors.New("no support write")
 }
 
+//Close release resources
 func (of *OneFile) Close() error {
 	fmt.Println("close", of.Name())
 	//close this File
@@ -148,13 +187,10 @@ func (of *OneFile) Close() error {
 	if of.Buff != nil {
 		of.Buff = nil
 	}
-
-	if of.IsDir() {
-		return nil
-	}
 	return nil
 }
 
+//Read read content of this file
 func (of *OneFile) Read(p []byte) (n int, err error) {
 	fmt.Println("read", of.Name(), " position = ", of.Position)
 	fmt.Println("framework buff len:", len(p))
@@ -170,7 +206,7 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 	//check Buff
 	if of.Buff == nil {
 		//first reqeust
-		of.InitBuff()
+		of.initBuff()
 		qkURL := acceleratedURL(of.item.DownloadURL)
 		fmt.Println("qkURL = >", qkURL)
 		_, err = webdavGetFileCotent(of.Client.HTTPClient, of.Buff, qkURL, of.Position, of.Size())
@@ -180,6 +216,7 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 		}
 	} else {
 		if of.Buff.Len() == 0 {
+			//read next block data
 			of.getRightBuffer()
 
 			qkURL := acceleratedURL(of.item.DownloadURL)
@@ -204,6 +241,7 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 	return size, err
 }
 
+//Seek setup position of this file
 func (of *OneFile) Seek(offset int64, whence int) (int64, error) {
 	fmt.Println("seek", of.Name())
 	fmt.Println("offset", offset)
@@ -222,6 +260,7 @@ func (of *OneFile) Seek(offset int64, whence int) (int64, error) {
 	return of.Position, nil
 }
 
+//Readdir Returns all files and directories under the directory
 func (of *OneFile) Readdir(count int) ([]os.FileInfo, error) {
 	fmt.Println("call readdir:", of.Name())
 	if of.IsDir() {
@@ -244,25 +283,34 @@ func (of *OneFile) Readdir(count int) ([]os.FileInfo, error) {
 	return nil, errors.New("this is file :" + of.Name())
 }
 
+//Stat infomation of file
 func (of *OneFile) Stat() (os.FileInfo, error) {
 	return of, nil
 }
 
-//os.FileInfo
+//Name name of file
 func (of *OneFile) Name() string {
 	return of.item.Name
 }
+
+//Size file size
 func (of *OneFile) Size() int64 {
 	return of.item.Size
 }
+
+//Mode default for everyone
 func (of *OneFile) Mode() os.FileMode {
 	return 0777
 }
+
+//ModTime return modified time
 func (of *OneFile) ModTime() time.Time {
 	mdTime := time.Time(of.item.LastModifiedDateTime)
 	//dsTime := mdTime.Local()
 	return mdTime
 }
+
+//IsDir whether this oneFile is a directory
 func (of *OneFile) IsDir() bool {
 	fmt.Println("isDir", of.Name())
 	if of.item.Folder != nil {
@@ -270,6 +318,8 @@ func (of *OneFile) IsDir() bool {
 	}
 	return false
 }
+
+//Sys return nil one onedrive
 func (of *OneFile) Sys() interface{} {
 	return nil
 }
@@ -307,13 +357,14 @@ func (of *OneFile) getBuff(size int) *bytes.Buffer {
 	buff.Grow(size)
 	return buff
 }
-func (of *OneFile) InitBuff() {
+
+func (of *OneFile) initBuff() {
 	if of.Buff == nil {
 		of.Buff = of.getBuff(DefaultBuffSize)
 	}
 }
 
-//when position change
+//ResetBuff when position change
 func (of *OneFile) ResetBuff() {
 	if of.Buff != nil {
 		of.Buff.Reset()
