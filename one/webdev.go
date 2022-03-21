@@ -82,21 +82,46 @@ func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
 }
 
 func (fs *OneFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	return errors.New("No support Mkdir")
+	fmt.Println("mkdir name ", name)
+	name = filepath.Clean(name)
+	parent := filepath.Dir(name)
+	dirName := filepath.Base(name)
+	fmt.Println(parent, " = ", dirName)
+	_, err := fs.Client.APImkdir(fs.Client.CurDriveID, parent, dirName)
+	return err
 }
 
+func isIncludeOp(op int, flag int) bool {
+	if (flag & op) == op {
+		return true
+	}
+	return false
+}
 func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
 	fmt.Println("open file", name)
-	dirPath := getOnedrivePath(name)
-	of, err := fs.getFileFromCache(dirPath)
-	if of != nil {
-		of.Position = 0
+	if isIncludeOp(os.O_CREATE, flag) {
+		fmt.Println("flag :create")
+		//create
+	} else if isIncludeOp(os.O_RDWR, flag) || isIncludeOp(os.O_WRONLY, flag) {
+		fmt.Println("flag :write")
+		//write
+	} else {
+		fmt.Println("flag :read")
+		//read
+		dirPath := getOnedrivePath(name)
+		of, err := fs.getFileFromCache(dirPath)
+		if of != nil {
+			of.Position = 0
+		}
+		return of, err
 	}
-	return of, err
+	return nil, errors.New("No support")
 }
 
 func (fs *OneFileSystem) RemoveAll(ctx context.Context, name string) error {
-	return errors.New("No support RemoveAll")
+	fmt.Println("rm name :", name)
+	_, err := fs.Client.APIDelFile(fs.Client.CurDriveID, name)
+	return err
 }
 
 func (fs *OneFileSystem) Rename(ctx context.Context, oldName, newName string) error {
