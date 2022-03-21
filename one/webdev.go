@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"golang.org/x/net/webdav"
@@ -26,6 +27,10 @@ type OneFile struct {
 	Position int64
 	Buff     *bytes.Buffer
 }
+
+const MB int = 1048576
+const KB int = 1024
+const DefaultBuffSize int = 100 * KB
 
 func (fs *OneFileSystem) newOneFileByItem(i *Item, fullPath string) *OneFile {
 	of := new(OneFile)
@@ -137,16 +142,28 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 
-	of.InitBuff()
-
 	//check Buff
-	if of.Buff.Len() == 0 {
+	if of.Buff == nil {
+		//first reqeust
+		of.InitBuff()
 		qkURL := acceleratedURL(of.item.DownloadURL)
 		fmt.Println("qkURL = >", qkURL)
 		_, err = webdavGetFileCotent(of.Client.HTTPClient, of.Buff, qkURL, of.Position, of.Size())
 		//TODO only print
 		if err != nil {
 			fmt.Println("call webdavGetFileCotent err = ", err)
+		}
+	} else {
+		if of.Buff.Len() == 0 {
+			of.getRightBuffer()
+
+			qkURL := acceleratedURL(of.item.DownloadURL)
+			fmt.Println("qkURL = >", qkURL)
+			_, err = webdavGetFileCotent(of.Client.HTTPClient, of.Buff, qkURL, of.Position, of.Size())
+			//TODO only print
+			if err != nil {
+				fmt.Println("call webdavGetFileCotent err = ", err)
+			}
 		}
 	}
 
@@ -231,11 +248,43 @@ func (of *OneFile) IsDir() bool {
 func (of *OneFile) Sys() interface{} {
 	return nil
 }
+func (of *OneFile) getRightBuffer() {
+	if of.Buff.Cap() == DefaultBuffSize {
+		size := of.getRightBufferSize()
+		fmt.Println("change buff size to ", ViewHumanShow(int64(size)))
+		of.Buff = of.getBuff(size)
+	}
+}
+func (of *OneFile) getRightBufferSize() int {
+	lname := strings.ToLower(of.Name())
+	//video file
+	if strings.HasSuffix(lname, ".mp4") ||
+		strings.HasSuffix(lname, ".mkv") ||
+		strings.HasSuffix(lname, ".wmv") ||
+		strings.HasSuffix(lname, ".webm") ||
+		strings.HasSuffix(lname, ".avi") ||
+		strings.HasSuffix(lname, ".rmvb") ||
+		strings.HasSuffix(lname, ".rm") {
+		return 25 * MB
+	}
+	// 1G+
+	if int64(1024*MB) < of.Size() {
+		return 25 * MB
+	}
+
+	if of.Size() > int64(200*MB) && of.Size() <= int64(1024*MB) {
+		return 10 * MB
+	}
+	return MB
+}
+func (of *OneFile) getBuff(size int) *bytes.Buffer {
+	buff := new(bytes.Buffer)
+	buff.Grow(size)
+	return buff
+}
 func (of *OneFile) InitBuff() {
 	if of.Buff == nil {
-		of.Buff = new(bytes.Buffer)
-		//4M
-		of.Buff.Grow(4194304)
+		of.Buff = of.getBuff(DefaultBuffSize)
 	}
 }
 
