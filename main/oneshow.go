@@ -531,6 +531,35 @@ func setFuns(ct *cmd.Context) {
 		Serivce(address, https)
 	}
 	pro = new(cmd.Program)
+	pro.Name = "webdav"
+	pro.Desc = "run webdav service for onedirve (only read)(beta version)"
+	pro.Usage = "usage: " + pro.Name + " [OPTION]"
+	pro.ParamDefMap = map[string]*cmd.ParamDef{}
+
+	pro.ParamDefMap["h"] = &cmd.ParamDef{
+		"h",
+		"help",
+		false,
+		"print help"}
+	pro.ParamDefMap["u"] = &cmd.ParamDef{
+		"u",
+		"url",
+		true,
+		"setup listen address for this service,as -u :5555"}
+	ct.CmdMap[pro.Name] = pro
+	pro.Cmd = func(pro *cmd.Program) {
+		if ct.ParamGroupMap["h"] != nil {
+			cmd.PrintCmdHelp(pro)
+			return
+		}
+		address := ":8080"
+		upp := ct.ParamGroupMap["u"]
+		if upp != nil {
+			address = upp.Value
+		}
+		Webdav(address)
+	}
+	pro = new(cmd.Program)
 	pro.Name = "users"
 	pro.Desc = "list login users"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"

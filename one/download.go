@@ -1,6 +1,7 @@
 package one
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -344,4 +345,37 @@ func NewDWorker() *DWorker {
 	wk := new(DWorker)
 	wk.CurDownload = new(DownloadInfo)
 	return wk
+}
+
+func webdavGetFileCotent(cli *chttp.HttpClient, buff *bytes.Buffer, uurl string, position int64, fileSize int64) (int64, error) {
+	fmt.Println("fileSize :", fileSize)
+	maxNeedLen := fileSize - position
+	needLen := int64(buff.Cap() - buff.Len())
+	if needLen > maxNeedLen {
+		needLen = maxNeedLen
+	}
+
+	rangeHeader := fmt.Sprintf("bytes=%d-%d", position, position+needLen-1)
+	fmt.Println("header range :", rangeHeader)
+	header := map[string]string{}
+	header["RANGE"] = rangeHeader
+	resp, err := cli.HttpGet(uurl, header, nil)
+	if err != nil {
+		return 0, errors.New(fmt.Sprint("download ", uurl, " failed", err))
+	}
+	defer resp.Body.Close()
+	strConRge := resp.Header.Get("Content-Range")
+	if strConRge == "" {
+		return 0, errors.New("no support range")
+	}
+	sc := resp.StatusCode / 100
+	if sc != 2 {
+		return 0, errors.New("request errors,status code = " + strconv.Itoa(sc) + "," + resp.Status)
+	}
+	fmt.Println("response header range :", strConRge)
+	fmt.Println("seed to :", position)
+	//1M 1k*1024
+	count, err := io.CopyN(buff, resp.Body, needLen)
+	fmt.Println("read to buff :", count)
+	return count, err
 }

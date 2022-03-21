@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/milin2436/oneshow/one"
+	"golang.org/x/net/webdav"
 )
 
 //like "https://localhost/fetch?url="
@@ -213,6 +214,30 @@ func Serivce(address string, https bool) {
 		fmt.Println("http server on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
+	if err != nil {
+		fmt.Println("run thie service to failed on error = ", err)
+	}
+}
+
+func Webdav(address string) {
+	cli, err1 := one.NewOneClient()
+	if err1 != nil {
+		panic(err1.Error())
+	}
+	go AutoUpdateToken(cli)
+	wh := new(webdav.Handler)
+
+	//filesystem setup
+	fsOneDrive := new(one.OneFileSystem)
+	fsOneDrive.Cache = map[string]*one.OneFile{}
+	fsOneDrive.Client = cli
+
+	//webdav setup
+	wh.FileSystem = fsOneDrive
+	wh.LockSystem = webdav.NewMemLS()
+	http.Handle("/", wh)
+	fmt.Println("http server on ", address)
+	err := http.ListenAndServe(address, nil)
 	if err != nil {
 		fmt.Println("run thie service to failed on error = ", err)
 	}
