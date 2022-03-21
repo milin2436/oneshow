@@ -24,12 +24,13 @@ type OneFileSystem struct {
 
 //OneFile onedrive file for webdav
 type OneFile struct {
-	Client     *OneClient
-	Fs         *OneFileSystem
-	FullPath   string
-	item       *Item
-	Position   int64
-	Buff       *bytes.Buffer
+	Client   *OneClient
+	Fs       *OneFileSystem
+	FullPath string
+	item     *Item
+	Position int64
+	//Buff       *bytes.Buffer
+	RemoteIn   io.ReadCloser
 	createTime *time.Time
 }
 
@@ -184,9 +185,9 @@ func (of *OneFile) Close() error {
 	of.Position = -1
 	of.Client = nil
 	of.Fs = nil
-	if of.Buff != nil {
-		of.Buff = nil
-	}
+
+	of.closeRemoteStream()
+	of.RemoteIn = nil
 	return nil
 }
 
@@ -202,35 +203,17 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 		fmt.Println("first check, read file done. name = ", of.Name())
 		return 0, io.EOF
 	}
-
-	//check Buff
-	if of.Buff == nil {
-		//first reqeust
-		of.initBuff()
+	if of.RemoteIn == nil {
 		qkURL := acceleratedURL(of.item.DownloadURL)
 		fmt.Println("qkURL = >", qkURL)
-		_, err = webdavGetFileCotent(of.Client.HTTPClient, of.Buff, qkURL, of.Position, of.Size())
-		//TODO only print
+		of.RemoteIn, err = webdavGetFileFromPosition(of.Client.HTTPClient, qkURL, of.Position, of.Size())
 		if err != nil {
-			fmt.Println("call webdavGetFileCotent err = ", err)
-		}
-	} else {
-		if of.Buff.Len() == 0 {
-			//read next block data
-			of.getRightBuffer()
-
-			qkURL := acceleratedURL(of.item.DownloadURL)
-			fmt.Println("qkURL = >", qkURL)
-			_, err = webdavGetFileCotent(of.Client.HTTPClient, of.Buff, qkURL, of.Position, of.Size())
-			//TODO only print
-			if err != nil {
-				fmt.Println("call webdavGetFileCotent err = ", err)
-			}
+			fmt.Println("get body err = ", err)
+			of.closeRemoteStream()
+			return 0, err
 		}
 	}
-
-	//read data from buff
-	size, err := of.Buff.Read(p)
+	size, err := of.RemoteIn.Read(p)
 	if err == nil {
 		of.Position = of.Position + int64(size)
 		if of.Position >= of.Size() {
@@ -256,7 +239,9 @@ func (of *OneFile) Seek(offset int64, whence int) (int64, error) {
 		of.Position = of.Size() - offset
 	}
 	//TODO check postion
-	of.ResetBuff()
+
+	of.closeRemoteStream()
+	of.RemoteIn = nil
 	return of.Position, nil
 }
 
@@ -323,13 +308,7 @@ func (of *OneFile) IsDir() bool {
 func (of *OneFile) Sys() interface{} {
 	return nil
 }
-func (of *OneFile) getRightBuffer() {
-	if of.Buff.Cap() == DefaultBuffSize {
-		size := of.getRightBufferSize()
-		fmt.Println("change buff size to ", ViewHumanShow(int64(size)))
-		of.Buff = of.getBuff(size)
-	}
-}
+
 func (of *OneFile) getRightBufferSize() int {
 	lname := strings.ToLower(of.Name())
 	//video file
@@ -358,16 +337,10 @@ func (of *OneFile) getBuff(size int) *bytes.Buffer {
 	return buff
 }
 
-func (of *OneFile) initBuff() {
-	if of.Buff == nil {
-		of.Buff = of.getBuff(DefaultBuffSize)
-	}
-}
-
-//ResetBuff when position change
-func (of *OneFile) ResetBuff() {
-	if of.Buff != nil {
-		of.Buff.Reset()
+func (of *OneFile) closeRemoteStream() {
+	if of.RemoteIn != nil {
+		fmt.Println("close Remote inputsteam,name = ", of.Name())
+		of.RemoteIn.Close()
 	}
 }
 

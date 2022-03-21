@@ -379,3 +379,27 @@ func webdavGetFileCotent(cli *chttp.HttpClient, buff *bytes.Buffer, uurl string,
 	fmt.Println("read to buff :", count)
 	return count, err
 }
+
+func webdavGetFileFromPosition(cli *chttp.HttpClient, uurl string, position int64, fileSize int64) (io.ReadCloser, error) {
+	rangeHeader := fmt.Sprintf("bytes=%d-", position)
+	fmt.Println("header range :", rangeHeader)
+	header := map[string]string{}
+	header["RANGE"] = rangeHeader
+	resp, err := cli.HttpGet(uurl, header, nil)
+	if err != nil {
+		return nil, errors.New(fmt.Sprint("download ", uurl, " failed", err))
+	}
+	//defer resp.Body.Close()
+	strConRge := resp.Header.Get("Content-Range")
+	if strConRge == "" {
+		return nil, errors.New("no support range")
+	}
+	sc := resp.StatusCode / 100
+	if sc != 2 {
+		return nil, errors.New("request errors,status code = " + strconv.Itoa(sc) + "," + resp.Status)
+	}
+	fmt.Println("response header range :", strConRge)
+	fmt.Println("seed to :", position)
+	//1M 1k*1024
+	return resp.Body, nil
+}
