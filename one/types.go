@@ -43,6 +43,7 @@ type AuthToken struct {
 //oneshow application config
 type OneShowConfig struct {
 	AcceleratedAPI string `json:"accelerated_api"`
+	Acceleration   bool   `json:"acceleration"`
 	Client_ID      string `json:"client_id"`
 	ClientSecret   string `json:"client_secret"`
 	Scope          string `json:"scope"`

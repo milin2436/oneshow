@@ -314,6 +314,8 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 	defer task.Close()
 
 	//cur.URL = uploadURL
+	uploadURL = AcceleratedURL(uploadURL)
+	core.Println("upload url =", uploadURL)
 
 	err = cli.APIUploadSourcePart(task, uploadURL, position, task.Size())
 	if err != nil {

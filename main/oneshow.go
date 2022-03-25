@@ -484,10 +484,13 @@ func setFuns(ct *cmd.Context) {
 			}
 			fmt.Println("done all.")
 		} else {
-			err := cli.UploadBigFile(srcFile.Value, cli.CurDriveID, filepath.Join(fn.Value, fileInfo.Name()))
-			if err != nil {
-				fmt.Println("upload file to failed")
-			}
+			/*
+				err := cli.UploadBigFile(srcFile.Value, cli.CurDriveID, filepath.Join(fn.Value, fileInfo.Name()))
+				if err != nil {
+					fmt.Println("upload file to failed")
+				}
+			*/
+			cli.UploadSourceTryAgain(srcFile.Value, cli.CurDriveID, fn.Value, 100)
 		}
 	}
 	pro = new(cmd.Program)

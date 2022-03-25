@@ -204,7 +204,7 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 	if of.RemoteIn == nil {
-		qkURL := acceleratedURL(of.item.DownloadURL)
+		qkURL := AcceleratedURL(of.item.DownloadURL)
 		fmt.Println("qkURL = >", qkURL)
 		of.RemoteIn, err = webdavGetFileFromPosition(of.Client.HTTPClient, qkURL, of.Position, of.Size())
 		if err != nil {
@@ -355,7 +355,10 @@ func getOnedrivePath(dirPath string) string {
 	return dirPath
 }
 
-func acceleratedURL(hurl string) string {
+func AcceleratedURL(hurl string) string {
+	if !ONE_SHOW_CONFIG.Acceleration {
+		return hurl
+	}
 	if ONE_SHOW_CONFIG.AcceleratedAPI == "" {
 		return hurl
 	}
