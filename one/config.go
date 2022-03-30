@@ -86,6 +86,9 @@ func setupOneShowConfig() {
 		if cfg.Scope != "" {
 			SCOPE = cfg.Scope
 		}
+		if cfg.RedirectURL != "" {
+			CALLBACK_URL = cfg.RedirectURL
+		}
 	}
 }
 func getConfigAuthToken() *AuthToken {

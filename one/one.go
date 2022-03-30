@@ -27,7 +27,7 @@ var CLIENT_SECRET string = "jvv9q-o9Yt2bxg.6kRmOLi~5xhQDrN.5._"
 
 var SCOPE string = "Files.Read Files.ReadWrite Files.Read.All Files.ReadWrite.All offline_access Sites.Read.All User.Read"
 
-const CALLBACK_URL = "http://localhost:4444/result"
+var CALLBACK_URL = "http://localhost:4444/result"
 
 //OneClient is context object
 type OneClient struct {

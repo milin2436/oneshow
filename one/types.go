@@ -47,6 +47,7 @@ type OneShowConfig struct {
 	Client_ID      string `json:"client_id"`
 	ClientSecret   string `json:"client_secret"`
 	Scope          string `json:"scope"`
+	RedirectURL    string `json:"redirect_uri"`
 }
 
 // Error is returned from one drive when things go wrong
