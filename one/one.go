@@ -540,6 +540,7 @@ func mytest() {
 
 	//core.Debug = false
 
+
 	cli, _ := NewOneClient()
 
 	//cli.GetAuthCode()
@@ -566,6 +567,7 @@ func mytest() {
 		}
 	*/
 	//cli.APISearchByKey(cli.CurDriveID, "test")
+
 	err := cli.UploadSource("bona1.mkv", cli.CurDriveID, "/test/")
 	if err != nil {
 		fmt.Println("err = ", err)
