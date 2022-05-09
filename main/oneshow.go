@@ -156,6 +156,11 @@ func setFuns(ct *cmd.Context) {
 		LongName:  "list",
 		NeedValue: false,
 		Desc:      "list files detail"}
+	pro.ParamDefMap["d"] = &cmd.ParamDef{
+		Name:      "d",
+		LongName:  "direct_url",
+		NeedValue: false,
+		Desc:      "list files direct url"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -192,6 +197,11 @@ func setFuns(ct *cmd.Context) {
 				}
 				fmt.Printf("%-10s%-16s%-28s%-100s\n", one.ViewHumanShow(v.Size), v.CreatedBy.User.DisplayName, dsTime, Name)
 			}
+		} else if ct.ParamGroupMap["d"] != nil {
+			for _, v := range ret.Value {
+				fmt.Printf("[%s]%-200s\n\n", v.Name, v.DownloadURL)
+			}
+
 		} else {
 			for _, v := range ret.Value {
 				Name := v.Name
