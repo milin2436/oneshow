@@ -1,0 +1,8 @@
+{
+    "accelerated_api":"https://exsample.com/fetch?url=",
+    "acceleration":false,
+    "client_id":"b15665d9-eda6-4092-8539-0eec376afd59",
+    "client_secret":"qtyfaBBYA403=unZUP40~_#",
+    "scope":"Files.Read Files.ReadWrite Files.Read.All Files.ReadWrite.All offline_access Sites.Read.All",
+    "redirect_uri":"http://localhost:53682/"
+}
