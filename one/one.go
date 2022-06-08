@@ -370,8 +370,8 @@ func HandleResponForParseToken(resp *http.Response, err error) (*AuthToken, erro
 	if err != nil {
 		return nil, err
 	}
-	core.Println(string(buff))
-	core.Println("code,", resp.StatusCode)
+	core.Println("token = ", string(buff))
+	core.Println("statuscode = ", resp.StatusCode)
 	if resp.StatusCode == 200 {
 		token := new(AuthToken)
 		perr := json.Unmarshal(buff, token)
@@ -539,7 +539,6 @@ func (cli *OneClient) DoAutoForNewUser() {
 func mytest() {
 
 	//core.Debug = false
-
 
 	cli, _ := NewOneClient()
 
