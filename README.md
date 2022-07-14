@@ -10,10 +10,14 @@
 6.删除文件到回收站  
 7.以web方式浏览和下载网盘文件，实验阶段  
 8.以webdav方式，挂载到设备，不支持修改文件和增加文件  
-9.支持linux和windows系统，其他设备请自行构建 
+9.支持linux和windows系统，其他设备请自行构建   
+10.支持通过配置文件，自定义使用自己的onedrive API   
+11.支持webdav挂载时，通过配置加速地址，以达到加速下载onedrive文件的目的   
+
 
 # 使用
-直接执行oneshow,查看支持的命令，支持使用-h查看子命令的详细使用方法。  
+直接执行oneshow,查看支持的命令，支持使用-h查看子命令的详细使用方法。可自建 .oneshow.json 配置文件，配置加速下载和使用自己的onedrive API功能。    
+
 执行oneshow回车
 ```
 HELP ===========================
@@ -80,6 +84,12 @@ list onedrive path
 
 ```
 
+可通过环境变量oneshowuser来使用某个特定用户的onedrive，而忽略从.od_cur_user.id读取当前用户信息，用于当想要在一个终端启动多个用户的webdav服务时。比如存在u1用户，启动他的webdav服务，在linux下可使用命令:
+```
+oneshowuser=u1 ./oneshow webdav -u 127.0.0.1:4444
+
+```
+
 删除目标文件/test，放入到回收站使用：
 ```
 ./oneshow rm /test
@@ -109,6 +119,30 @@ list onedrive path
 
 ```
 ./oneshow webdav -u 127.0.0.1:4444
+
+```
+
+由于在中国境内，没有onedrive服务器，访问国际版时速度非常不稳定，故提供一个加速接口功能。思路为将onedrive的下载链接，通过参数传递给加速的中间服务器，以达到加速目的。以我个人的经验，移动用户的最佳实践为cloudflare workers加上自选ipv6 cloudflare CDN非常稳定，在线看4k视频没有什么问题。oneshow程序的配置文件为.oneshow.json，请务必将该文件建在当前用户目录下。
+配置文件为json格式，accelerated_api为加速地址，acceleration为加速开关，只有当acceleration为true而且accelerated_api不为空的情况下，才会生效加速功能。
+
+```JSON
+{
+    "accelerated_api":"https://exsample.com/fetch?url=",
+    "acceleration":false
+}
+```
+
+可通过oneshow程序配置文件.oneshow.json，使用自己的onedrive API。比如使用rclone的API [配置文件](https://github.com/milin2436/oneshow/blob/main/conf/oneshow.json.rclone)
+
+```JSON
+{
+    "accelerated_api":"https://exsample.com/fetch?url=",
+    "acceleration":false,
+    "client_id":"b15665d9-eda6-4092-8539-0eec376afd59",
+    "client_secret":"qtyfaBBYA403=unZUP40~_#",
+    "scope":"Files.Read Files.ReadWrite Files.Read.All Files.ReadWrite.All offline_access Sites.Read.All",
+    "redirect_uri":"http://localhost:53682/"
+}
 
 ```
 
