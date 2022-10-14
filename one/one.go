@@ -108,21 +108,30 @@ func (cli *OneClient) UpdateToken() (*AuthToken, error) {
 		core.Println("err=", err)
 		return nil, err
 	}
+	//using old drive ID
+	token.DriveID = cli.CurDriveID
 	cli.Token = token
-	cli.SaveToken2UserConfig(token)
+	err = cli.SaveToken2UserConfig(token)
+	if err != nil {
+		return nil, err
+	}
 	core.Println(token.AccessToken)
 	return token, nil
 }
 
 //SaveToken2Home save token to local
-func (cli *OneClient) SaveToken2UserConfig(token *AuthToken) {
+func (cli *OneClient) SaveToken2UserConfig(token *AuthToken) error {
 	exTime := time.Now().Add(time.Second * time.Duration(token.ExpiresIn-60))
 	token.ExpiresTime = Timestamp(exTime)
-	dri, err := cli.APIGetMeDrive()
-	if err == nil {
+	if token.DriveID == "" {
+		dri, err := cli.APIGetMeDrive()
+		if err != nil {
+			return err
+		}
 		token.DriveID = dri.ID
 	}
 	SaveToken2Home(token)
+	return nil
 }
 
 //SaveToken2Home save token to local
