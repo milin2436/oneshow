@@ -212,7 +212,7 @@ func Serivce(address string, https bool) {
 	}
 }
 
-func Webdav(address string, user string, passwd string) {
+func Webdav(address string, user string, passwd string, cert string, key string) {
 	cli, err1 := one.NewOneClient()
 	if err1 != nil {
 		panic(err1.Error())
@@ -244,9 +244,15 @@ func Webdav(address string, user string, passwd string) {
 		}
 		wh.ServeHTTP(w, req)
 	})
+	var err error
+	if cert != "" {
+		fmt.Println("https server on ", address)
+		err = http.ListenAndServeTLS(address, cert, key, nil)
+	} else {
+		fmt.Println("http server on ", address)
+		err = http.ListenAndServe(address, nil)
+	}
 
-	fmt.Println("http server on ", address)
-	err := http.ListenAndServe(address, nil)
 	if err != nil {
 		fmt.Println("run thie service to failed on error = ", err)
 	}

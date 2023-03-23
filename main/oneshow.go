@@ -569,6 +569,16 @@ func setFuns(ct *cmd.Context) {
 		"password",
 		true,
 		"setup webdav password"}
+	pro.ParamDefMap["c"] = &cmd.ParamDef{
+		"c",
+		"cert",
+		true,
+		"setup https cert file"}
+	pro.ParamDefMap["k"] = &cmd.ParamDef{
+		"k",
+		"key",
+		true,
+		"setup webdav key file"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
@@ -590,7 +600,18 @@ func setFuns(ct *cmd.Context) {
 		if pwdp != nil {
 			passwd = pwdp.Value
 		}
-		Webdav(address, user, passwd)
+
+		cp := ct.ParamGroupMap["c"]
+		cert := ""
+		if cp != nil {
+			cert = cp.Value
+		}
+		kp := ct.ParamGroupMap["k"]
+		key := ""
+		if kp != nil {
+			key = kp.Value
+		}
+		Webdav(address, user, passwd, cert, key)
 	}
 	pro = new(cmd.Program)
 	pro.Name = "users"
