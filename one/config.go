@@ -20,40 +20,44 @@ const one_show_config_file string = ".oneshow.json"
 
 var ONE_SHOW_CONFIG *OneShowConfig
 
-var configFile string = ".od.json"
+//var configFile string = ".od.json"
 
-func setCurUser() {
-	suser := os.Getenv("oneshowuser")
+func getCurUser() string {
+	envUser := os.Getenv("oneshowuser")
+	envUser = strings.TrimSpace(envUser)
 	home, _ := os.UserHomeDir()
-	buff, err := ioutil.ReadFile(filepath.Join(home, CurUser))
-	if err != nil {
-		configFile = ConfigFileDefault
+	user := ""
+	if envUser != "" {
+		user = envUser
+		fmt.Println("user envUser :", user)
 	} else {
-		userName := string(buff)
-		userName = strings.TrimSpace(userName)
-		configFile = ConfigFileDefault + "." + userName
-	}
-	suser = strings.TrimSpace(suser)
-	if suser != "" {
-		configFile = ConfigFileDefault + "." + suser
-		fmt.Println("using config = ", configFile)
-	}
-	//fmt.Println("using config = ", configFile)
-}
-func findConfigFile() string {
-	buff, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		home, _ := os.UserHomeDir()
-		if home != "" {
-			fullPath := filepath.Join(home, configFile)
-			buff, err = ioutil.ReadFile(fullPath)
-			if err == nil {
-				return string(buff)
-			}
+		buff, err := ioutil.ReadFile(filepath.Join(home, CurUser))
+		if err != nil {
+			user = ""
+		} else {
+			userName := string(buff)
+			userName = strings.TrimSpace(userName)
+			user = userName
 		}
-		return ""
 	}
-	return string(buff)
+	fmt.Println("using config = ", user)
+	return user
+}
+func (u *OneClient) setUserInfo(name string) {
+	u.UserName = name
+	if name == "" {
+		u.ConfigFile = ConfigFileDefault
+	} else {
+		u.ConfigFile = ConfigFileDefault + "." + name
+	}
+}
+func (u *OneClient) findConfigFile() (string, error) {
+	home, _ := os.UserHomeDir()
+	buff, err := ioutil.ReadFile(filepath.Join(home, u.ConfigFile))
+	if err != nil {
+		return "", err
+	}
+	return string(buff), nil
 }
 
 //InitOneShowConfig load oneshow config information
@@ -91,16 +95,16 @@ func setupOneShowConfig() {
 		}
 	}
 }
-func getConfigAuthToken() *AuthToken {
+func (u *OneClient) getConfigAuthToken() *AuthToken {
 	//HOME USER PWD SHELL
 	cfg := new(AuthToken)
-	content := findConfigFile()
+	content, err := u.findConfigFile()
 	//fmt.Println(content)
 	if content == "" {
 		fmt.Println("can not find config file")
 		return nil
 	}
-	err := json.Unmarshal([]byte(content), cfg)
+	err = json.Unmarshal([]byte(content), cfg)
 	if err != nil {
 		fmt.Println("err = ", err)
 		return nil
@@ -109,11 +113,11 @@ func getConfigAuthToken() *AuthToken {
 }
 
 //SaveToken2Home home
-func SaveToken2Home(token *AuthToken) error {
+func (u *OneClient) SaveToken2Home(token *AuthToken) error {
 	home, _ := os.UserHomeDir()
 	pcfg := ""
 	if home != "" {
-		pcfg = filepath.Join(home, configFile)
+		pcfg = filepath.Join(home, u.ConfigFile)
 	} else {
 		return errors.New("can not found home dir")
 	}

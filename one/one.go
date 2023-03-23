@@ -36,6 +36,8 @@ type OneClient struct {
 	SSOHost string
 	APIHost string
 
+	UserName   string
+	ConfigFile string
 	Token      *AuthToken
 	CurDriveID string
 }
@@ -130,7 +132,7 @@ func (cli *OneClient) SaveToken2UserConfig(token *AuthToken) error {
 		}
 		token.DriveID = dri.ID
 	}
-	SaveToken2Home(token)
+	cli.SaveToken2Home(token)
 	return nil
 }
 
@@ -441,9 +443,13 @@ func NewBaseOneClient() *OneClient {
 
 //NewOneClient instance a OneClient
 func NewOneClient() (*OneClient, error) {
+	u := getCurUser()
+	return NewOneClientUser(u)
+}
+func NewOneClientUser(user string) (*OneClient, error) {
 	cli := NewBaseOneClient()
-	setCurUser()
-	tk := getConfigAuthToken()
+	cli.setUserInfo(user)
+	tk := cli.getConfigAuthToken()
 	if tk == nil {
 		return nil, errors.New("pls config a new user")
 	}
