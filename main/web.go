@@ -212,7 +212,7 @@ func Serivce(address string, https bool) {
 	}
 }
 
-func Webdav(address string) {
+func Webdav(address string, user string, passwd string) {
 	cli, err1 := one.NewOneClient()
 	if err1 != nil {
 		panic(err1.Error())
@@ -228,7 +228,23 @@ func Webdav(address string) {
 	//webdav setup
 	wh.FileSystem = fsOneDrive
 	wh.LockSystem = webdav.NewMemLS()
-	http.Handle("/", wh)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		// uername/password
+		username, password, ok := req.BasicAuth()
+		if !ok {
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		//check
+		if username != user || password != passwd {
+			http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
+			return
+		}
+		wh.ServeHTTP(w, req)
+	})
+
 	fmt.Println("http server on ", address)
 	err := http.ListenAndServe(address, nil)
 	if err != nil {

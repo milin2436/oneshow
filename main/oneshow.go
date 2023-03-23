@@ -559,6 +559,16 @@ func setFuns(ct *cmd.Context) {
 		"url",
 		true,
 		"setup listen address for this service,as -u :5555"}
+	pro.ParamDefMap["user"] = &cmd.ParamDef{
+		"user",
+		"user",
+		true,
+		"setup webdav user"}
+	pro.ParamDefMap["passwd"] = &cmd.ParamDef{
+		"passwd",
+		"password",
+		true,
+		"setup webdav password"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
@@ -570,7 +580,17 @@ func setFuns(ct *cmd.Context) {
 		if upp != nil {
 			address = upp.Value
 		}
-		Webdav(address)
+		userp := ct.ParamGroupMap["user"]
+		user := ""
+		if userp != nil {
+			user = userp.Value
+		}
+		pwdp := ct.ParamGroupMap["passwd"]
+		passwd := ""
+		if pwdp != nil {
+			passwd = pwdp.Value
+		}
+		Webdav(address, user, passwd)
 	}
 	pro = new(cmd.Program)
 	pro.Name = "users"
