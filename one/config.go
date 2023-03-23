@@ -40,7 +40,7 @@ func getCurUser() string {
 			user = userName
 		}
 	}
-	fmt.Println("using config = ", user)
+	//fmt.Println("using config = ", user)
 	return user
 }
 func (u *OneClient) setUserInfo(name string) {
