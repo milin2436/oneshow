@@ -1,5 +1,5 @@
 buildTime=$(shell date +"%F %T")
-out=oneshow
+out=oneshow2
 objs=oneshow.go web.go user.go
 ver=v0.2.0
 $(out) : $(objs)

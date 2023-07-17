@@ -230,17 +230,20 @@ func Webdav(address string, user string, passwd string, cert string, key string)
 	wh.LockSystem = webdav.NewMemLS()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		// uername/password
-		username, password, ok := req.BasicAuth()
-		if !ok {
-			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
-		//check
-		if username != user || password != passwd {
-			http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
-			return
+		//need check user and password
+		if user != "" {
+			// uername/password
+			username, password, ok := req.BasicAuth()
+			if !ok {
+				w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			//check
+			if username != user || password != passwd {
+				http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
+				return
+			}
 		}
 		wh.ServeHTTP(w, req)
 	})
