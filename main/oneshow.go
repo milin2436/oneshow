@@ -579,6 +579,11 @@ func setFuns(ct *cmd.Context) {
 		"key",
 		true,
 		"setup webdav key file"}
+	pro.ParamDefMap["ss"] = &cmd.ParamDef{
+		"ss",
+		"serverlist",
+		true,
+		"server list as 0all;all1"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
@@ -611,7 +616,13 @@ func setFuns(ct *cmd.Context) {
 		if kp != nil {
 			key = kp.Value
 		}
-		Webdav(address, user, passwd, cert, key)
+		ssp := ct.ParamGroupMap["ss"]
+		ss := ""
+		if ssp != nil {
+			ss = ssp.Value
+		}
+		fmt.Println("sss = ", ss)
+		Webdav(address, user, passwd, cert, key, ss)
 	}
 	pro = new(cmd.Program)
 	pro.Name = "users"

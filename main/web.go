@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/milin2436/oneshow/one"
@@ -212,41 +213,53 @@ func Serivce(address string, https bool) {
 	}
 }
 
-func Webdav(address string, user string, passwd string, cert string, key string) {
-	cli, err1 := one.NewOneClient()
-	if err1 != nil {
-		panic(err1.Error())
-	}
+func genWebdavHandle(cli *one.OneClient) *webdav.Handler {
+	//TODO
 	go AutoUpdateToken(cli)
 	wh := new(webdav.Handler)
-
 	//filesystem setup
 	fsOneDrive := new(one.OneFileSystem)
 	fsOneDrive.Cache = map[string]*one.OneFile{}
 	fsOneDrive.Client = cli
-
 	//webdav setup
 	wh.FileSystem = fsOneDrive
 	wh.LockSystem = webdav.NewMemLS()
+	wh.Prefix = "/" + cli.UserName
+	return wh
 
-	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		//need check user and password
-		if user != "" {
-			// uername/password
-			username, password, ok := req.BasicAuth()
-			if !ok {
-				w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
-			//check
-			if username != user || password != passwd {
-				http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
-				return
-			}
+}
+func Webdav(address string, user string, passwd string, cert string, key string, ss string) {
+	oneList := strings.Split(ss, ";")
+	for _, oneUser := range oneList {
+		oneUser = strings.TrimSpace(oneUser)
+		if oneUser == "" {
+			continue
 		}
-		wh.ServeHTTP(w, req)
-	})
+		fmt.Printf("server %s on\n", oneUser)
+		cli, err1 := one.NewOneClientUser(oneUser)
+		if err1 != nil {
+			panic(err1.Error())
+		}
+		wh := genWebdavHandle(cli)
+		http.HandleFunc("/"+cli.UserName+"/", func(w http.ResponseWriter, req *http.Request) {
+			//need check user and password
+			if user != "" {
+				// uername/password
+				username, password, ok := req.BasicAuth()
+				if !ok {
+					w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				//check
+				if username != user || password != passwd {
+					http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
+					return
+				}
+			}
+			wh.ServeHTTP(w, req)
+		})
+	}
 	var err error
 	if cert != "" {
 		fmt.Println("https server on ", address)
@@ -255,7 +268,6 @@ func Webdav(address string, user string, passwd string, cert string, key string)
 		fmt.Println("http server on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
-
 	if err != nil {
 		fmt.Println("run thie service to failed on error = ", err)
 	}
