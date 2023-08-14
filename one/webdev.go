@@ -173,9 +173,17 @@ func (fs *OneFileSystem) Rename(ctx context.Context, oldName, newName string) er
 	}
 	cli := fs.Client
 	//dir = getOnedrivePath(dir)
-	//idir, err := cli.APIGetFile(cli.CurDriveID, dir)
+	newparent := filepath.Dir(newName)
+	fmt.Printf("new parent = %s \n", newparent)
+	idir, err := cli.APIGetFile(cli.CurDriveID, newparent)
+	if err != nil {
+		return fmt.Errorf("open dir : %s error : %s", newparent, err.Error())
+	}
+	if idir.Folder == nil {
+		return fmt.Errorf("%s is not dir", newparent)
+	}
 	newName = filepath.Base(newName)
-	f, err := cli.APIUpdateFileByItemID(cli.CurDriveID, old.item.ID, newName, old.item.ParentReference.ID)
+	f, err := cli.APIUpdateFileByItemID(cli.CurDriveID, old.item.ID, newName, idir.ID)
 	fmt.Println(f)
 	return err
 }
