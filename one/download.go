@@ -66,7 +66,7 @@ func GetDownloadFileName(u *url.URL, fileName string, disposition string) string
 	return u.Path
 }
 
-func ParseRangeCookie(strConRge string) (error, int64) {
+func parseRangeCookie(strConRge string) (error, int64) {
 	//Content-Range:[bytes 0-1/707017362]
 	idx := strings.Index(strConRge, "/")
 	if idx == -1 {
@@ -263,7 +263,7 @@ func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (error, str
 	if strConRge == "" {
 		return errors.New("no support range"), "", 0
 	}
-	err, fileSize := ParseRangeCookie(strConRge)
+	err, fileSize := parseRangeCookie(strConRge)
 	log.Println("response header ", strConRge, " fileSize = ", ViewHumanShow(fileSize))
 	if err != nil {
 		return err, "", 0
@@ -341,6 +341,7 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 	return nil
 }
 
+//NewDWorker create a download worker
 func NewDWorker() *DWorker {
 	wk := new(DWorker)
 	wk.CurDownload = new(DownloadInfo)

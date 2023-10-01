@@ -10,21 +10,21 @@ import (
 	"github.com/milin2436/oneshow/one"
 )
 
-const config string = ".od.json."
-const configFile string = ".od.json"
+const configFile string = one.ConfigFileDefault
+const configUserFile string = configFile + "."
 
 func ListUsers() ([]string, error) {
-	home, _ := os.UserHomeDir()
+	home := one.GetConfigDir()
 	return loopDir(home)
 }
 func SaveUser(user string) error {
-	home, _ := os.UserHomeDir()
-	userDec := filepath.Join(home, config+user)
+	home := one.GetConfigDir()
+	userDec := filepath.Join(home, configUserFile+user)
 	userSrc := filepath.Join(home, configFile)
 	return copyUser(userSrc, userDec)
 }
 func SwitchUser(user string) error {
-	home, _ := os.UserHomeDir()
+	home := one.GetConfigDir()
 	decFile := filepath.Join(home, one.CurUser)
 	return ioutil.WriteFile(decFile, []byte(user), 0660)
 }
@@ -43,7 +43,7 @@ func copyUser(userSrc string, userDec string) error {
 	return err
 }
 func Who() (string, error) {
-	home, _ := os.UserHomeDir()
+	home := one.GetConfigDir()
 	decFile := filepath.Join(home, one.CurUser)
 	buff, err := ioutil.ReadFile(decFile)
 	return string(buff), err
@@ -61,7 +61,7 @@ func loopDir(dirName string) ([]string, error) {
 		}
 		path := filepath.Join(dirName, info.Name())
 		lname := strings.ToLower(info.Name())
-		if strings.HasPrefix(lname, config) {
+		if strings.HasPrefix(lname, configUserFile) {
 			li = append(li, path)
 		}
 	}

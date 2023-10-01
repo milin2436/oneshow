@@ -386,12 +386,12 @@ func getOnedrivePath(dirPath string) string {
 }
 
 func AcceleratedURL(hurl string) string {
-	if !ONE_SHOW_CONFIG.Acceleration {
+	if !OneshowConfig.Acceleration {
 		return hurl
 	}
-	if ONE_SHOW_CONFIG.AcceleratedAPI == "" {
+	if OneshowConfig.AcceleratedAPI == "" {
 		return hurl
 	}
 	p := url.QueryEscape(hurl)
-	return ONE_SHOW_CONFIG.AcceleratedAPI + p
+	return OneshowConfig.AcceleratedAPI + p
 }
