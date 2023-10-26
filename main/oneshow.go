@@ -28,16 +28,6 @@ var exitQueue chan int
 //worker thread count
 var threadCnt = 4
 
-func getOnedrivePath(dirPath string) string {
-	if dirPath == "" {
-		dirPath = "/"
-	}
-	strLen := len(dirPath)
-	if strLen > 1 && dirPath[strLen-1] == '/' {
-		dirPath = dirPath[:strLen-1]
-	}
-	return dirPath
-}
 func taskWorker(goid int, cli *one.OneClient) {
 	for {
 		msg, ok := <-taskQueue
@@ -122,7 +112,7 @@ func batchDownload(cli *one.OneClient, curDir string, descDir string) {
 	}
 }
 func Download(cli *one.OneClient, downloadDir string, dirPath string) {
-	dirPath = getOnedrivePath(dirPath)
+	dirPath = one.GetOnedrivePath(dirPath)
 	info, err := cli.APIGetFile(cli.CurDriveID, dirPath)
 	if err != nil {
 		fmt.Println("err =", err)
@@ -877,7 +867,7 @@ func setFuns(ct *cmd.Context) {
 			return
 		}
 		file := fp.Value
-		dir = getOnedrivePath(dir)
+		dir = one.GetOnedrivePath(dir)
 		ifile, err := cli.APIGetFile(cli.CurDriveID, file)
 		if err != nil {
 			fmt.Println("file is wrong,err = ", err)

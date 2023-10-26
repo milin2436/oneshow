@@ -158,45 +158,6 @@ func Serivce(address string, https bool) {
 		w.Write([]byte(html))
 	})
 
-	http.HandleFunc("/debug", func(w http.ResponseWriter, r *http.Request) {
-		uu := r.URL.String()
-		var buff bytes.Buffer
-		buff.WriteString("HOST = ")
-		buff.WriteString(r.RemoteAddr)
-		buff.WriteString("\n")
-
-		buff.WriteString("method = ")
-		buff.WriteString(r.Method)
-		buff.WriteString("\n")
-
-		buff.WriteString("url = ")
-		buff.WriteString(uu)
-		buff.WriteString("\n")
-
-		buff.WriteString("header = ")
-		for k, v := range r.Header {
-			buff.WriteString(k)
-			buff.WriteString(":")
-			if len(v) == 1 {
-				buff.WriteString(v[0])
-			} else {
-				for _, sv := range v {
-					buff.WriteString(sv)
-					buff.WriteString(";")
-				}
-			}
-			buff.WriteString("\n")
-		}
-		buff.WriteString("\n")
-
-		buff.WriteString("body = ")
-		if r.Body != nil {
-			defer r.Body.Close()
-			io.Copy(&buff, r.Body)
-		}
-		w.Write(buff.Bytes())
-	})
-
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"ok\"}"))
 	})

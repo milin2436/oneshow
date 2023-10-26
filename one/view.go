@@ -59,3 +59,14 @@ func EscapeJSONString(input string) string {
 
 	return buffer.String()
 }
+
+func GetOnedrivePath(dirPath string) string {
+	if dirPath == "" {
+		dirPath = "/"
+	}
+	strLen := len(dirPath)
+	if strLen > 1 && dirPath[strLen-1] == '/' {
+		dirPath = dirPath[:strLen-1]
+	}
+	return dirPath
+}
