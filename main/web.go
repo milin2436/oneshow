@@ -164,13 +164,13 @@ func Serivce(address string, https bool) {
 	var err error
 	if https {
 		fmt.Println("https server on ", address)
-		err = http.ListenAndServeTLS(address, "cacert.pem", "privkey.pem", nil)
+		err = http.ListenAndServeTLS(address, "cert.pem", "key.pem", nil)
 	} else {
 		fmt.Println("http server on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
 	if err != nil {
-		fmt.Println("run thie service to failed on error = ", err)
+		fmt.Println("run http service to failed on error = ", err)
 	}
 }
 
@@ -223,13 +223,13 @@ func Webdav(address string, user string, passwd string, cert string, key string,
 	}
 	var err error
 	if cert != "" {
-		fmt.Println("https server on ", address)
+		fmt.Println("webdavs server on ", address)
 		err = http.ListenAndServeTLS(address, cert, key, nil)
 	} else {
-		fmt.Println("http server on ", address)
+		fmt.Println("webdav server on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
 	if err != nil {
-		fmt.Println("run thie service to failed on error = ", err)
+		fmt.Println("run webdav service to failed on error = ", err)
 	}
 }

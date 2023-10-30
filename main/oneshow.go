@@ -129,6 +129,7 @@ func Download(cli *one.OneClient, downloadDir string, dirPath string) {
 func setFuns(ct *cmd.Context) {
 	ct.CmdMap = map[string]*cmd.Program{}
 
+	//#ls
 	pro := new(cmd.Program)
 	pro.Name = "ls"
 	pro.Desc = "list onedrive path"
@@ -205,6 +206,7 @@ func setFuns(ct *cmd.Context) {
 	}
 
 	//next remove command
+	//#rm
 	pro = new(cmd.Program)
 	pro.Name = "rm"
 	pro.Desc = "remove a file or dir to trash"
@@ -242,6 +244,7 @@ func setFuns(ct *cmd.Context) {
 	}
 
 	//print onedrive information
+	//#info
 	pro = new(cmd.Program)
 	pro.Name = "info"
 	pro.Desc = "show onedrive info"
@@ -280,6 +283,7 @@ func setFuns(ct *cmd.Context) {
 	}
 
 	//next download
+	//#d
 	pro = new(cmd.Program)
 	pro.Name = "d"
 	pro.Desc = "download a file or dir or URL to local"
@@ -335,6 +339,7 @@ func setFuns(ct *cmd.Context) {
 	}
 
 	//next add new user
+	//#auth
 	pro = new(cmd.Program)
 	pro.Name = "auth"
 	pro.Desc = "get a auth for new user"
@@ -406,6 +411,7 @@ func setFuns(ct *cmd.Context) {
 
 	//next upload local file or dir
 	pro = new(cmd.Program)
+	//#u
 	pro.Name = "u"
 	pro.Desc = "upload a file or dir to onedrive"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
@@ -494,6 +500,7 @@ func setFuns(ct *cmd.Context) {
 		}
 	}
 	pro = new(cmd.Program)
+	//#web
 	pro.Name = "web"
 	pro.Desc = "run this http super serivce (beta version)"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
@@ -534,6 +541,7 @@ func setFuns(ct *cmd.Context) {
 		Serivce(address, https)
 	}
 	pro = new(cmd.Program)
+	//#webdav
 	pro.Name = "webdav"
 	pro.Desc = "run webdav service for onedirve (only read)(beta version)"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
@@ -615,6 +623,7 @@ func setFuns(ct *cmd.Context) {
 		Webdav(address, user, passwd, cert, key, ss)
 	}
 	pro = new(cmd.Program)
+	//#users
 	pro.Name = "users"
 	pro.Desc = "list login users"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
@@ -736,6 +745,7 @@ func setFuns(ct *cmd.Context) {
 
 	//next program
 	pro = new(cmd.Program)
+	//#search
 	pro.Name = "search"
 	pro.Desc = "search files by key"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]... key"
@@ -818,6 +828,7 @@ func setFuns(ct *cmd.Context) {
 	}
 	//next program
 	pro = new(cmd.Program)
+	//#mv
 	pro.Name = "mv"
 	pro.Desc = "move file to other dir"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]... dir"

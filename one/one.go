@@ -199,9 +199,44 @@ func (cli *OneClient) APIGetMeDrive() (*Drive, error) {
 	core.Println("id=", dri.ID)
 	return dri, nil
 }
+func (cli *OneClient) apiListFilesByPath(url string) (*ListChildrenResponse, error) {
+	core.Println("APIListFilesByPath request url = ", url)
+	header := cli.SetOneDriveAPIToken()
+	objs := new(ListChildrenResponse)
+	resp, err := cli.HTTPClient.HttpGet(url, header, nil)
+	err = HandleResponForParseAPI(resp, err, objs)
+	if err != nil {
+		return nil, err
+	}
+	return objs, nil
+}
+func (cli *OneClient) APIListFilesByPath(driveID string, path string) (*ListChildrenResponse, error) {
+	uri := "/drives/%s/root:%s:/children"
+	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
+	if path == "/" {
+		uri := "/drives/%s/root/children"
+		URL = cli.APIHost + fmt.Sprintf(uri, driveID)
+	}
+	ret := []Item{}
+	var resp *ListChildrenResponse
+	var err error
+	for {
+		resp, err = cli.apiListFilesByPath(URL)
+		if err != nil {
+			return resp, err
+		}
+		ret = append(ret, resp.Value...)
+		if resp.NextLink == "" {
+			break
+		}
+		URL = resp.NextLink
+	}
+	resp.Value = ret
+	return resp, err
+}
 
 //APIListFilesByPath get files by path
-func (cli *OneClient) APIListFilesByPath(driveID string, path string) (*ListChildrenResponse, error) {
+func (cli *OneClient) APIListFilesByPath0(driveID string, path string) (*ListChildrenResponse, error) {
 	uri := "/drives/%s/root:%s:/children"
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
 	if path == "/" {
@@ -559,33 +594,33 @@ func mytest() {
 
 	//cli.GetAuthCode()
 	//cli.GetFirstToken()
-
 	//cli.UpdateToken()
 
 	//API##########
 
 	cli.APIGetMeDrive()
 
-	/*
-		resp, err := cli.APIListFilesByPath(cli.CurDriveID, "/")
-		if err != nil {
-			fmt.Println("err = ", err)
-			return
-		}
-		for _, val := range resp.Value {
-			fmt.Println(val.Name)
-			fmt.Println(val.ID)
-			fmt.Println(val.Size)
-			fmt.Println(val.GetSize())
-
-		}
-	*/
-	//cli.APISearchByKey(cli.CurDriveID, "test")
-
-	err := cli.UploadSource("bona1.mkv", cli.CurDriveID, "/test/")
+	resp, err := cli.APIListFilesByPath(cli.CurDriveID, "/backup/pics/indexbj")
 	if err != nil {
 		fmt.Println("err = ", err)
 		return
 	}
+	fmt.Println("len=", len(resp.Value))
+
+	for _, val := range resp.Value {
+		fmt.Println(val.Name)
+		fmt.Println(val.ID)
+		fmt.Println(val.Size)
+		fmt.Println(val.GetSize())
+	}
+	/*
+		//cli.APISearchByKey(cli.CurDriveID, "test")
+
+			err := cli.UploadSource("bona1.mkv", cli.CurDriveID, "/test/")
+			if err != nil {
+				fmt.Println("err = ", err)
+				return
+			}
+	*/
 
 }
