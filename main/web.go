@@ -13,10 +13,6 @@ import (
 	"golang.org/x/net/webdav"
 )
 
-//like "https://localhost/fetch?url="
-
-//const acceleratedAPI string = ""
-
 func AutoUpdateToken(cli *one.OneClient) {
 	for {
 		CheckToken(cli)
@@ -93,10 +89,6 @@ func Serivce(address string, https bool) {
 	if err1 != nil {
 		panic(err1.Error())
 	}
-	http.HandleFunc("/p", func(w http.ResponseWriter, r *http.Request) {
-		dd := GetQueryParamByKey(r, "d")
-		w.Write([]byte(dd))
-	})
 
 	http.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
 		fetchURL := GetQueryParamByKey(r, "url")

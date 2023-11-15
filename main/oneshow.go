@@ -490,13 +490,9 @@ func setFuns(ct *cmd.Context) {
 			}
 			fmt.Println("done all.")
 		} else {
-			/*
-				err := cli.UploadBigFile(srcFile.Value, cli.CurDriveID, filepath.Join(fn.Value, fileInfo.Name()))
-				if err != nil {
-					fmt.Println("upload file to failed")
-				}
-			*/
+
 			cli.UploadSourceTryAgain(srcFile.Value, cli.CurDriveID, fn.Value, 100)
+
 		}
 	}
 	pro = new(cmd.Program)
@@ -800,6 +796,8 @@ func setFuns(ct *cmd.Context) {
 		if ct.ParamGroupMap["dn"] != nil {
 			isDownload = true
 		}
+		isCreateDefaultDir := false
+		defaultDirName := "search-dn"
 		for _, v := range ret.Value {
 			pre := ""
 			if detail {
@@ -817,11 +815,14 @@ func setFuns(ct *cmd.Context) {
 			}
 			fmt.Printf("%s\n", Name)
 			if detail && isDownload {
+				if !isCreateDefaultDir {
+					os.MkdirAll(defaultDirName, 0770)
+					isCreateDefaultDir = true
+				}
 				pindex := strings.Index(OName, "/root:/")
 				if pindex > -1 {
 					desc := OName[pindex+6:]
-					fmt.Println("will download ", desc)
-					Download(cli, "search-dn", desc)
+					Download(cli, defaultDirName, desc)
 				}
 			}
 		}
