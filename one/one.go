@@ -17,8 +17,6 @@ import (
 	chttp "github.com/milin2436/oneshow/http"
 
 	"github.com/milin2436/oneshow/core"
-
-	log "github.com/sirupsen/logrus"
 )
 
 var CLIENT_ID string = "51d4977e-8740-41c9-956b-bc5fa4f58806"
@@ -55,8 +53,6 @@ func setProxy4Client(HC *chttp.HttpClient) {
 
 //NewDefaultCli new a default oneshow client
 func NewDefaultCli() (*OneClient, error) {
-	log.SetFormatter(&log.JSONFormatter{})
-	log.SetReportCaller(true)
 	return NewOneClient()
 }
 

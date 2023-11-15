@@ -6,14 +6,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"mime"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 )
@@ -193,16 +191,12 @@ func (hc *HttpClient) HttpGetDownloadFile(URL string, fileName string) error {
 		return errors.New(fmt.Sprint("download ", URL, " failed", err))
 	}
 	defer resp.Body.Close()
-	contentType := resp.Header.Get("Content-Type")
+	//contentType := resp.Header.Get("Content-Type")
 	sc := resp.StatusCode / 100
 	if sc != 2 {
-		return errors.New("request errors,status code = " + strconv.Itoa(sc) + "," + resp.Status)
+		return fmt.Errorf("request errors,status code = %d  status =  %s", sc, resp.Status)
 	}
-	if len(contentType) > 0 && strings.Contains(contentType, "text/html") {
-		if strings.HasSuffix(fileName, ".jpg") || strings.HasSuffix(fileName, ".zip") || strings.HasSuffix(fileName, ".mp4") || strings.HasSuffix(fileName, ".wmv") {
-			return errors.New("not need file type")
-		}
-	}
+
 	realName := GetDownloadFileName(resp.Request.URL, fileName, resp.Header.Get("Content-Disposition"))
 	dst, err := os.Create(realName)
 	if err != nil {
@@ -211,23 +205,7 @@ func (hc *HttpClient) HttpGetDownloadFile(URL string, fileName string) error {
 	defer dst.Close()
 	_, err = io.Copy(dst, resp.Body)
 	if err != nil {
-		return errors.New(fmt.Sprint("wring file ", fileName, " failed ", err))
+		return fmt.Errorf("write file %s to failed err = %s", fileName, err.Error())
 	}
 	return nil
-}
-
-func mytest() {
-	ps := map[string]string{}
-	ps["test"] = "xx"
-
-	header := map[string]string{}
-	header["Host"] = "www.baidu.com"
-	header["xQ"] = "www.baidu.com"
-	//header["Content-Type"] = "json/text"
-	reps, err := SimpleHttpClient.HttpFormPost("http://127.0.0.1:4444/req", header, ps)
-	html, err := HandleRespon2String(reps, err)
-	if err != nil {
-		log.Println("err = ", err)
-	}
-	log.Println(html)
 }
