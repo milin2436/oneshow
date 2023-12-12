@@ -42,6 +42,7 @@ type DWorker struct {
 	WorkerID    int
 	AuthSve     AuthService
 	DownloadDir string
+	Proxy       bool
 }
 
 //GetDownloadFileName get name of download source
@@ -147,8 +148,11 @@ func (wk *DWorker) Download(url string) error {
 	if wk.HTTPCli == nil {
 		return errors.New("pls http client for this worker")
 	}
+	if wk.Proxy {
+		url = getAcceleratedURL(url)
+	}
 	wk.cancelFlag = false
-	wk.WorkStatus = fmt.Sprintf("downloading id = %d for %s", wk.WorkerID, url)
+	wk.WorkStatus = fmt.Sprintf("downloading id = %d for %s\n", wk.WorkerID, url)
 
 	fileName, fileSize, isRange, err := wk.GetDownloadFileInfo(url, "")
 	if !isRange {

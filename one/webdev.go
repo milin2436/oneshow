@@ -395,3 +395,10 @@ func AcceleratedURL(hurl string) string {
 	p := url.QueryEscape(hurl)
 	return OneshowConfig.AcceleratedAPI + p
 }
+func getAcceleratedURL(hurl string) string {
+	if OneshowConfig.AcceleratedAPI == "" {
+		return hurl
+	}
+	p := url.QueryEscape(hurl)
+	return OneshowConfig.AcceleratedAPI + p
+}

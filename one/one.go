@@ -506,7 +506,7 @@ func (cli *OneClient) GetTokenHeader() map[string]string {
 }
 
 //Download file from api
-func (cli *OneClient) Download(file string, downloadDir string) {
+func (cli *OneClient) Download(file string, downloadDir string, a bool) {
 	dri, err := cli.APIGetFile(cli.CurDriveID, file)
 	if err != nil {
 		fmt.Println("err = ", err)
@@ -516,6 +516,7 @@ func (cli *OneClient) Download(file string, downloadDir string) {
 	wk.HTTPCli = cli.HTTPClient
 	wk.AuthSve = cli
 	wk.DownloadDir = downloadDir
+	wk.Proxy = a
 	err = wk.Download(dri.DownloadURL)
 	if err != nil {
 		fmt.Println("failed on ", err, " for ", file)

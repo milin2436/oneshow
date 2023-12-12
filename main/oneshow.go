@@ -84,7 +84,7 @@ func batchUpload(cli *one.OneClient, curDir string, descDir string) {
 		taskQueue <- msg
 	}
 }
-func batchDownload(cli *one.OneClient, curDir string, descDir string) {
+func batchDownload(cli *one.OneClient, curDir string, descDir string, a bool) {
 	fileList, err := cli.APIListFilesByPath(cli.CurDriveID, curDir)
 	if err != nil {
 		fmt.Println("error in loop dir,err = ", err)
@@ -92,7 +92,7 @@ func batchDownload(cli *one.OneClient, curDir string, descDir string) {
 	}
 	for _, f := range fileList.Value {
 		if f.Folder != nil {
-			batchDownload(cli, filepath.Join(curDir, f.Name), filepath.Join(descDir, f.Name))
+			batchDownload(cli, filepath.Join(curDir, f.Name), filepath.Join(descDir, f.Name), a)
 			continue
 		}
 		path := filepath.Join(curDir, f.Name)
@@ -108,10 +108,10 @@ func batchDownload(cli *one.OneClient, curDir string, descDir string) {
 			fmt.Println("The file exists,skip it : ", localFilePath)
 			continue
 		}
-		cli.Download(path, descDir)
+		cli.Download(path, descDir, a)
 	}
 }
-func Download(cli *one.OneClient, downloadDir string, dirPath string) {
+func Download(cli *one.OneClient, downloadDir string, dirPath string, a bool) {
 	dirPath = one.GetOnedrivePath(dirPath)
 	info, err := cli.APIGetFile(cli.CurDriveID, dirPath)
 	if err != nil {
@@ -120,9 +120,9 @@ func Download(cli *one.OneClient, downloadDir string, dirPath string) {
 	}
 	go AutoUpdateToken(cli)
 	if info.Folder != nil {
-		batchDownload(cli, dirPath, downloadDir)
+		batchDownload(cli, dirPath, downloadDir, a)
 	} else {
-		cli.Download(dirPath, downloadDir)
+		cli.Download(dirPath, downloadDir, a)
 	}
 }
 
@@ -132,7 +132,7 @@ func setFuns(ct *cmd.Context) {
 	//#ls
 	pro := new(cmd.Program)
 	pro.Name = "ls"
-	pro.Desc = "list onedrive path"
+	pro.Desc = "list onedrive directory contents"
 	pro.Usage = "usage: " + pro.Name + " [OPTION] path"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
@@ -209,7 +209,7 @@ func setFuns(ct *cmd.Context) {
 	//#rm
 	pro = new(cmd.Program)
 	pro.Name = "rm"
-	pro.Desc = "remove a file or dir to trash"
+	pro.Desc = "move a file or directory to the trash"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]  [file|dir]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
@@ -240,7 +240,9 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("err = ", err, " ret = ", ret)
 			return
 		}
-		fmt.Println("result = ", ret)
+		if ret {
+			fmt.Printf("removed %s \n", path)
+		}
 	}
 
 	//print onedrive information
@@ -300,6 +302,11 @@ func setFuns(ct *cmd.Context) {
 		LongName:  "downloadDir",
 		NeedValue: true,
 		Desc:      "download dir,default current dir"}
+	pro.ParamDefMap["a"] = &cmd.ParamDef{
+		Name:      "a",
+		LongName:  "acceleration",
+		NeedValue: false,
+		Desc:      "Speed in downloads through CDN"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -311,6 +318,10 @@ func setFuns(ct *cmd.Context) {
 		if dirPath == "" {
 			fmt.Println("file or dir can not be empty")
 			return
+		}
+		a := false
+		if ct.ParamGroupMap["a"] != nil {
+			a = true
 		}
 		dirObj := ct.ParamGroupMap["d"]
 		downloadDir := "."
@@ -329,13 +340,14 @@ func setFuns(ct *cmd.Context) {
 			wk.HTTPCli = cli.HTTPClient
 			wk.AuthSve = cli
 			wk.DownloadDir = downloadDir
+			wk.Proxy = a
 			err := wk.Download(dirPath)
 			if err != nil {
 				fmt.Println("err = ", err)
 			}
 			return
 		}
-		Download(cli, downloadDir, dirPath)
+		Download(cli, downloadDir, dirPath, a)
 	}
 
 	//next add new user
@@ -413,7 +425,7 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#u
 	pro.Name = "u"
-	pro.Desc = "upload a file or dir to onedrive"
+	pro.Desc = "upload a file or directory to OneDrive"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -425,12 +437,12 @@ func setFuns(ct *cmd.Context) {
 		Name:      "f",
 		LongName:  "fileName",
 		NeedValue: true,
-		Desc:      "copy to onedrive dir, such as: /root/path/to"}
+		Desc:      "copy to OneDrive directory, such as: /root/path/to"}
 	pro.ParamDefMap["s"] = &cmd.ParamDef{
 		Name:      "s",
 		LongName:  "src",
 		NeedValue: true,
-		Desc:      "source file,local file or dir."}
+		Desc:      "source file,local file or directory."}
 	pro.ParamDefMap["t"] = &cmd.ParamDef{
 		Name:      "t",
 		LongName:  "thread",
@@ -621,7 +633,7 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#users
 	pro.Name = "users"
-	pro.Desc = "list login users"
+	pro.Desc = "list of logged-in users"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
@@ -650,9 +662,10 @@ func setFuns(ct *cmd.Context) {
 		}
 	}
 	//swich to other session
+	//#su
 	pro = new(cmd.Program)
 	pro.Name = "su"
-	pro.Desc = "swich to other logined user"
+	pro.Desc = "switch to another logged-in user"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]... [UserName]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
@@ -743,7 +756,7 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#search
 	pro.Name = "search"
-	pro.Desc = "search files by key"
+	pro.Desc = "search for files by keywords"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]... key"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
@@ -822,7 +835,7 @@ func setFuns(ct *cmd.Context) {
 				pindex := strings.Index(OName, "/root:/")
 				if pindex > -1 {
 					desc := OName[pindex+6:]
-					Download(cli, defaultDirName, desc)
+					Download(cli, defaultDirName, desc, false)
 				}
 			}
 		}
@@ -831,8 +844,8 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#mv
 	pro.Name = "mv"
-	pro.Desc = "move file to other dir"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]... dir"
+	pro.Desc = "move file to other directory"
+	pro.Usage = "usage: " + pro.Name + " [OPTION]... directory"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
