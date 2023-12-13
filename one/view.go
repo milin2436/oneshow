@@ -1,7 +1,9 @@
 package one
 
 import (
+	"bytes"
 	"fmt"
+	"strconv"
 )
 
 func ViewHumanShow(isize int64) string {
@@ -26,3 +28,45 @@ func ViewPercent(sub, total int64) string {
 	return fmt.Sprintf("%.1f%%", fsub/ftotal*100.0)
 }
 
+func EscapeJSONString(input string) string {
+	var buffer bytes.Buffer
+
+	for _, char := range input {
+		switch char {
+		case '"':
+			buffer.WriteString(`\"`)
+		case '\\':
+			buffer.WriteString(`\\`)
+		case '\b':
+			buffer.WriteString(`\b`)
+		case '\f':
+			buffer.WriteString(`\f`)
+		case '\n':
+			buffer.WriteString(`\n`)
+		case '\r':
+			buffer.WriteString(`\r`)
+		case '\t':
+			buffer.WriteString(`\t`)
+		default:
+			if char < 0x20 {
+				buffer.WriteString(`\u00`)
+				buffer.WriteString(strconv.FormatInt(int64(char), 16))
+			} else {
+				buffer.WriteRune(char)
+			}
+		}
+	}
+
+	return buffer.String()
+}
+
+func GetOnedrivePath(dirPath string) string {
+	if dirPath == "" {
+		dirPath = "/"
+	}
+	strLen := len(dirPath)
+	if strLen > 1 && dirPath[strLen-1] == '/' {
+		dirPath = dirPath[:strLen-1]
+	}
+	return dirPath
+}

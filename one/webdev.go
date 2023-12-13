@@ -88,7 +88,7 @@ func (fs *OneFileSystem) cacheItemCheckExist(name string, item *Item) *OneFile {
 	return of
 }
 func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
-	fmt.Println("getFileFromCache :", name)
+	fmt.Println("fs.getFileFromCache :", name)
 	of := fs.Cache[name]
 	if of == nil {
 		info, err := fs.Client.APIGetFile(fs.Client.CurDriveID, name)
@@ -122,7 +122,7 @@ func isIncludeOp(op int, flag int) bool {
 
 //Mkdir create a directory
 func (fs *OneFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
-	fmt.Println("mkdir name ", name)
+	fmt.Println("fs.mkdir name ", name)
 	name = filepath.Clean(name)
 	parent := filepath.Dir(name)
 	dirName := filepath.Base(name)
@@ -133,7 +133,7 @@ func (fs *OneFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMod
 
 //OpenFile create or write or read file
 func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
-	fmt.Println("open file", name)
+	fmt.Println("fs.openFile", name)
 	if isIncludeOp(os.O_CREATE, flag) {
 		fmt.Println("flag :create")
 		//create
@@ -155,31 +155,61 @@ func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, pe
 
 //RemoveAll Move files and directories to the recycle bin
 func (fs *OneFileSystem) RemoveAll(ctx context.Context, name string) error {
-	fmt.Println("rm name :", name)
+	fmt.Println("fs.RemoveAll name=:", name)
 	_, err := fs.Client.APIDelFile(fs.Client.CurDriveID, name)
 	return err
 }
 
 //Rename rename file
 func (fs *OneFileSystem) Rename(ctx context.Context, oldName, newName string) error {
-	return errors.New("No support Rename")
+	fmt.Printf("fs.Rename old name %s ; new name %s", oldName, newName)
+	old, err := fs.getFileFromCache(oldName)
+	if err != nil {
+		return err
+	}
+	if old.item.ParentReference == nil {
+		fmt.Println("no dir id")
+		return errors.New("no dir id")
+	}
+	cli := fs.Client
+	//dir = getOnedrivePath(dir)
+	newparent := filepath.Dir(newName)
+	fmt.Printf("new parent = %s \n", newparent)
+	idir, err := cli.APIGetFile(cli.CurDriveID, newparent)
+	if err != nil {
+		return fmt.Errorf("open dir : %s error : %s", newparent, err.Error())
+	}
+	if idir.Folder == nil {
+		return fmt.Errorf("%s is not dir", newparent)
+	}
+	newName = filepath.Base(newName)
+	f, err := cli.APIUpdateFileByItemID(cli.CurDriveID, old.item.ID, newName, idir.ID)
+	fmt.Println(f)
+	return err
 }
 
 //Stat return information of name
 func (fs *OneFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
-	fmt.Println("stat file", name)
+	fmt.Println("fs.stat file = ", name)
 	dirPath := getOnedrivePath(name)
-	return fs.getFileFromCache(dirPath)
+	it, err := fs.getFileFromCache(dirPath)
+	if err != nil {
+		return nil, os.ErrNotExist
+	}
+	return it, nil
 }
 
 //write Now no support write
 func (of *OneFile) Write(p []byte) (n int, err error) {
+	fmt.Printf("call OneFile.Write for name = %s\n", of.FullPath)
 	return 0, errors.New("no support write")
 }
 
 //Close release resources
 func (of *OneFile) Close() error {
-	fmt.Println("close", of.Name())
+	fmt.Printf("call OneFile.Close for name = %s\n", of.FullPath)
+
+	//fmt.Println("close", of.Name())
 	//close this File
 	//release resources
 	of.Position = -1
@@ -193,7 +223,7 @@ func (of *OneFile) Close() error {
 
 //Read read content of this file
 func (of *OneFile) Read(p []byte) (n int, err error) {
-	fmt.Println("read", of.Name(), " position = ", of.Position)
+	fmt.Println("oneFile.read ", of.Name(), " position = ", of.Position)
 	fmt.Println("framework buff len:", len(p))
 	if of.IsDir() {
 		fmt.Println("can not read dir", of.Name())
@@ -226,9 +256,7 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 
 //Seek setup position of this file
 func (of *OneFile) Seek(offset int64, whence int) (int64, error) {
-	fmt.Println("seek", of.Name())
-	fmt.Println("offset", offset)
-	fmt.Println("whence:", whence)
+	fmt.Printf("OneFile.seek name = %s offset %d , whence %d\n", of.Name(), offset, whence)
 	if os.SEEK_SET == whence {
 		of.Position = offset
 	}
@@ -247,7 +275,7 @@ func (of *OneFile) Seek(offset int64, whence int) (int64, error) {
 
 //Readdir Returns all files and directories under the directory
 func (of *OneFile) Readdir(count int) ([]os.FileInfo, error) {
-	fmt.Println("call readdir:", of.Name())
+	fmt.Println("call oneFile.readdir:", of.Name())
 	if of.IsDir() {
 		ret, err := of.Client.APIListFilesByPath(of.Client.CurDriveID, of.FullPath)
 		if err != nil {
@@ -270,6 +298,7 @@ func (of *OneFile) Readdir(count int) ([]os.FileInfo, error) {
 
 //Stat infomation of file
 func (of *OneFile) Stat() (os.FileInfo, error) {
+	fmt.Printf("call OneFile.Stat name = %s\n", of.FullPath)
 	return of, nil
 }
 
@@ -297,7 +326,7 @@ func (of *OneFile) ModTime() time.Time {
 
 //IsDir whether this oneFile is a directory
 func (of *OneFile) IsDir() bool {
-	fmt.Println("isDir", of.Name())
+	fmt.Println("OneFile.isDir", of.Name())
 	if of.item.Folder != nil {
 		return true
 	}
@@ -306,6 +335,7 @@ func (of *OneFile) IsDir() bool {
 
 //Sys return nil one onedrive
 func (of *OneFile) Sys() interface{} {
+	fmt.Println("OneFile.Sys", of.Name())
 	return nil
 }
 
@@ -356,12 +386,19 @@ func getOnedrivePath(dirPath string) string {
 }
 
 func AcceleratedURL(hurl string) string {
-	if !ONE_SHOW_CONFIG.Acceleration {
+	if !OneshowConfig.Acceleration {
 		return hurl
 	}
-	if ONE_SHOW_CONFIG.AcceleratedAPI == "" {
+	if OneshowConfig.AcceleratedAPI == "" {
 		return hurl
 	}
 	p := url.QueryEscape(hurl)
-	return ONE_SHOW_CONFIG.AcceleratedAPI + p
+	return OneshowConfig.AcceleratedAPI + p
+}
+func getAcceleratedURL(hurl string) string {
+	if OneshowConfig.AcceleratedAPI == "" {
+		return hurl
+	}
+	p := url.QueryEscape(hurl)
+	return OneshowConfig.AcceleratedAPI + p
 }

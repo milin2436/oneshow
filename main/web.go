@@ -6,15 +6,12 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/milin2436/oneshow/one"
 	"golang.org/x/net/webdav"
 )
-
-//like "https://localhost/fetch?url="
-
-//const acceleratedAPI string = ""
 
 func AutoUpdateToken(cli *one.OneClient) {
 	for {
@@ -92,10 +89,6 @@ func Serivce(address string, https bool) {
 	if err1 != nil {
 		panic(err1.Error())
 	}
-	http.HandleFunc("/p", func(w http.ResponseWriter, r *http.Request) {
-		dd := GetQueryParamByKey(r, "d")
-		w.Write([]byte(dd))
-	})
 
 	http.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
 		fetchURL := GetQueryParamByKey(r, "url")
@@ -157,103 +150,78 @@ func Serivce(address string, https bool) {
 		w.Write([]byte(html))
 	})
 
-	http.HandleFunc("/debug", func(w http.ResponseWriter, r *http.Request) {
-		uu := r.URL.String()
-		var buff bytes.Buffer
-		buff.WriteString("HOST = ")
-		buff.WriteString(r.RemoteAddr)
-		buff.WriteString("\n")
-
-		buff.WriteString("method = ")
-		buff.WriteString(r.Method)
-		buff.WriteString("\n")
-
-		buff.WriteString("url = ")
-		buff.WriteString(uu)
-		buff.WriteString("\n")
-
-		buff.WriteString("header = ")
-		for k, v := range r.Header {
-			buff.WriteString(k)
-			buff.WriteString(":")
-			if len(v) == 1 {
-				buff.WriteString(v[0])
-			} else {
-				for _, sv := range v {
-					buff.WriteString(sv)
-					buff.WriteString(";")
-				}
-			}
-			buff.WriteString("\n")
-		}
-		buff.WriteString("\n")
-
-		buff.WriteString("body = ")
-		if r.Body != nil {
-			defer r.Body.Close()
-			io.Copy(&buff, r.Body)
-		}
-		w.Write(buff.Bytes())
-	})
-
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"ok\"}"))
 	})
 	var err error
 	if https {
 		fmt.Println("https server on ", address)
-		err = http.ListenAndServeTLS(address, "cacert.pem", "privkey.pem", nil)
+		err = http.ListenAndServeTLS(address, "cert.pem", "key.pem", nil)
 	} else {
 		fmt.Println("http server on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
 	if err != nil {
-		fmt.Println("run thie service to failed on error = ", err)
+		fmt.Println("run http service to failed on error = ", err)
 	}
 }
 
-func Webdav(address string, user string, passwd string, cert string, key string) {
-	cli, err1 := one.NewOneClient()
-	if err1 != nil {
-		panic(err1.Error())
-	}
+func genWebdavHandle(cli *one.OneClient) *webdav.Handler {
+	//TODO
 	go AutoUpdateToken(cli)
 	wh := new(webdav.Handler)
-
 	//filesystem setup
 	fsOneDrive := new(one.OneFileSystem)
 	fsOneDrive.Cache = map[string]*one.OneFile{}
 	fsOneDrive.Client = cli
-
 	//webdav setup
 	wh.FileSystem = fsOneDrive
 	wh.LockSystem = webdav.NewMemLS()
+	wh.Prefix = "/" + cli.UserName
+	return wh
 
-	http.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		// uername/password
-		username, password, ok := req.BasicAuth()
-		if !ok {
-			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-			w.WriteHeader(http.StatusUnauthorized)
-			return
+}
+func Webdav(address string, user string, passwd string, cert string, key string, ss string) {
+	oneList := strings.Split(ss, ";")
+	for _, oneUser := range oneList {
+		oneUser = strings.TrimSpace(oneUser)
+		if oneUser == "" {
+			continue
 		}
-		//check
-		if username != user || password != passwd {
-			http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
-			return
+		fmt.Printf("server %s on\n", oneUser)
+		cli, err1 := one.NewOneClientUser(oneUser)
+		if err1 != nil {
+			panic(err1.Error())
 		}
-		wh.ServeHTTP(w, req)
-	})
+		wh := genWebdavHandle(cli)
+		http.HandleFunc("/"+cli.UserName+"/", func(w http.ResponseWriter, req *http.Request) {
+			//need check user and password
+			if user != "" {
+				// uername/password
+				username, password, ok := req.BasicAuth()
+				if !ok {
+					w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+					w.WriteHeader(http.StatusUnauthorized)
+					return
+				}
+				//check
+				if username != user || password != passwd {
+					http.Error(w, "WebDAV: need authorized!", http.StatusUnauthorized)
+					return
+				}
+			}
+			wh.ServeHTTP(w, req)
+		})
+	}
 	var err error
 	if cert != "" {
-		fmt.Println("https server on ", address)
+		fmt.Println("webdavs server on ", address)
 		err = http.ListenAndServeTLS(address, cert, key, nil)
 	} else {
-		fmt.Println("http server on ", address)
+		fmt.Println("webdav server on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
-
 	if err != nil {
-		fmt.Println("run thie service to failed on error = ", err)
+		fmt.Println("run webdav service to failed on error = ", err)
 	}
 }

@@ -114,9 +114,12 @@ func (task *URLUploadTask) Close() error {
 func (task *URLUploadTask) Init() error {
 	wk := new(DWorker)
 	wk.HTTPCli = task.HTTPClient
-	err, fileName, fileSize := wk.GetDownloadFileInfo(task.URL, "")
+	fileName, fileSize, isRange, err := wk.GetDownloadFileInfo(task.URL, "")
 	if err != nil {
 		return err
+	}
+	if !isRange {
+		return fmt.Errorf("no range for this URL: %s", task.URL)
 	}
 	task.FileName = fileName
 	task.FileSize = fileSize

@@ -42,6 +42,7 @@ type DWorker struct {
 	WorkerID    int
 	AuthSve     AuthService
 	DownloadDir string
+	Proxy       bool
 }
 
 //GetDownloadFileName get name of download source
@@ -66,7 +67,7 @@ func GetDownloadFileName(u *url.URL, fileName string, disposition string) string
 	return u.Path
 }
 
-func ParseRangeCookie(strConRge string) (error, int64) {
+func parseRangeCookie(strConRge string) (error, int64) {
 	//Content-Range:[bytes 0-1/707017362]
 	idx := strings.Index(strConRge, "/")
 	if idx == -1 {
@@ -124,19 +125,45 @@ func lookSize(rdFile string) (error, int64) {
 	defer tfile.Close()
 	return readFilePosion(tfile)
 }
+func (wk *DWorker) downloadNoRange(url string, fileName string) error {
+	//set full path
+	fileFullPath := filepath.Join(wk.DownloadDir, fileName)
+	headers := map[string]string{}
+	wk.addAutoHTTPHeader(headers)
+	resp, err := wk.HTTPCli.HttpGet(url, headers, nil)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	df, err := os.OpenFile(fileFullPath, os.O_RDWR|os.O_CREATE, 0660)
+	if err != nil {
+		return err
+	}
+	defer df.Close()
+
+	_, err = io.Copy(df, resp.Body)
+	return err
+}
 func (wk *DWorker) Download(url string) error {
 	if wk.HTTPCli == nil {
 		return errors.New("pls http client for this worker")
 	}
+	if wk.Proxy {
+		url = getAcceleratedURL(url)
+	}
 	wk.cancelFlag = false
-	wk.WorkStatus = fmt.Sprintf("downloading id = %d for %s", wk.WorkerID, url)
+	wk.WorkStatus = fmt.Sprintf("downloading id = %d for %s\n", wk.WorkerID, url)
 
-	err, fileName, fileSize := wk.GetDownloadFileInfo(url, "")
+	fileName, fileSize, isRange, err := wk.GetDownloadFileInfo(url, "")
+	if !isRange {
+		return wk.downloadNoRange(url, fileName)
+	}
 	if err != nil {
 		return err
 	}
 	//set full path
 	fileName = filepath.Join(wk.DownloadDir, fileName)
+	//TODO
 
 	rdFile := fileName + ".finfo"
 	curPosion := int64(0)
@@ -249,27 +276,31 @@ func (wk *DWorker) addAutoHTTPHeader(header map[string]string) {
 		}
 	}
 }
-func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (error, string, int64) {
+func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (string, int64, bool, error) {
 	//RANGE: bytes=100000-
 	header := map[string]string{}
 	header["RANGE"] = "bytes=0-1"
 	wk.addAutoHTTPHeader(header)
 	resp, err := wk.HTTPCli.HttpGet(uurl, header, nil)
 	if err != nil {
-		return err, "", 0
+		return "", 0, false, err
 	}
 	defer resp.Body.Close()
-	strConRge := resp.Header.Get("Content-Range")
-	if strConRge == "" {
-		return errors.New("no support range"), "", 0
-	}
-	err, fileSize := ParseRangeCookie(strConRge)
-	log.Println("response header ", strConRge, " fileSize = ", ViewHumanShow(fileSize))
-	if err != nil {
-		return err, "", 0
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return "", 0, false, fmt.Errorf("status code error : %d", resp.StatusCode)
 	}
 	realName := GetDownloadFileName(resp.Request.URL, fileName, resp.Header.Get("Content-Disposition"))
-	return nil, realName, fileSize
+
+	strConRge := resp.Header.Get("Content-Range")
+	if strConRge == "" {
+		return realName, 0, false, nil
+	}
+	err, fileSize := parseRangeCookie(strConRge)
+	log.Println("response header ", strConRge, " fileSize = ", ViewHumanShow(fileSize))
+	if err != nil {
+		return "", 0, true, err
+	}
+	return realName, fileSize, true, nil
 }
 func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64, dfile *os.File, tfile *os.File) error {
 	rangeHeader := fmt.Sprintf("bytes=%d-", position)
@@ -341,6 +372,7 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 	return nil
 }
 
+//NewDWorker create a download worker
 func NewDWorker() *DWorker {
 	wk := new(DWorker)
 	wk.CurDownload = new(DownloadInfo)

@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/milin2436/oneshow/core"
 )
 
 //CurUser who is the current user
@@ -16,16 +18,32 @@ const CurUser string = ".od_cur_user.id"
 //ConfigFileDefault default user when login
 const ConfigFileDefault string = ".od.json"
 
-const one_show_config_file string = ".oneshow.json"
+//AppConfigDir config dir
+const AppConfigDir = ".config/oneshow"
 
-var ONE_SHOW_CONFIG *OneShowConfig
+//OneshowConfigFile config file name
+const OneshowConfigFile string = ".oneshow.json"
 
-//var configFile string = ".od.json"
+//OneshowConfig load .oneshow.json config file
+var OneshowConfig *OneShowConfig
+
+//GetConfigDir app config dir
+func GetConfigDir() string {
+	home, _ := os.UserHomeDir()
+	configDir := AppConfigDir
+
+	ret := filepath.Join(home, configDir)
+	if core.ExistFile(ret) {
+		return ret
+	}
+	os.MkdirAll(ret, os.ModePerm)
+	return ret
+}
 
 func getCurUser() string {
 	envUser := os.Getenv("oneshowuser")
 	envUser = strings.TrimSpace(envUser)
-	home, _ := os.UserHomeDir()
+	home := GetConfigDir()
 	user := ""
 	if envUser != "" {
 		user = envUser
@@ -52,7 +70,7 @@ func (u *OneClient) setUserInfo(name string) {
 	}
 }
 func (u *OneClient) findConfigFile() (string, error) {
-	home, _ := os.UserHomeDir()
+	home := GetConfigDir()
 	buff, err := ioutil.ReadFile(filepath.Join(home, u.ConfigFile))
 	if err != nil {
 		return "", err
@@ -63,15 +81,15 @@ func (u *OneClient) findConfigFile() (string, error) {
 //InitOneShowConfig load oneshow config information
 func InitOneShowConfig() {
 	//HOME USER PWD SHELL
-	ONE_SHOW_CONFIG = new(OneShowConfig)
-	home, _ := os.UserHomeDir()
+	OneshowConfig = new(OneShowConfig)
+	home := GetConfigDir()
 	if home != "" {
-		fullPath := filepath.Join(home, one_show_config_file)
+		fullPath := filepath.Join(home, OneshowConfigFile)
 		buff, err := ioutil.ReadFile(fullPath)
 		if err != nil {
 			return
 		}
-		err = json.Unmarshal(buff, ONE_SHOW_CONFIG)
+		err = json.Unmarshal(buff, OneshowConfig)
 		if err != nil {
 			fmt.Println("err = ", err)
 			return
@@ -82,7 +100,7 @@ func InitOneShowConfig() {
 }
 
 func setupOneShowConfig() {
-	cfg := ONE_SHOW_CONFIG
+	cfg := OneshowConfig
 	if cfg.Client_ID != "" && cfg.ClientSecret != "" {
 		//fmt.Println("using a third-party client :", cfg.Client_ID)
 		CLIENT_ID = cfg.Client_ID
@@ -114,7 +132,7 @@ func (u *OneClient) getConfigAuthToken() *AuthToken {
 
 //SaveToken2Home home
 func (u *OneClient) SaveToken2Home(token *AuthToken) error {
-	home, _ := os.UserHomeDir()
+	home := GetConfigDir()
 	pcfg := ""
 	if home != "" {
 		pcfg = filepath.Join(home, u.ConfigFile)
@@ -126,7 +144,7 @@ func (u *OneClient) SaveToken2Home(token *AuthToken) error {
 
 //SaveToken2DefaultPath save config when first login
 func SaveToken2DefaultPath(token *AuthToken) error {
-	home, _ := os.UserHomeDir()
+	home := GetConfigDir()
 	pcfg := ""
 	if home != "" {
 		pcfg = filepath.Join(home, ConfigFileDefault)
