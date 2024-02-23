@@ -209,14 +209,15 @@ func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64,
 	} else {
 		err = HandleResponForParseAPI(resp, err, objs)
 	}
+	//fix issue 4
+	if err != nil {
+		return nil, err
+	}
 	dis := time.Now().Sub(t0)
 	v := len / dis.Milliseconds() * 1000
 	remainTime := (fileSize - ed - 1) / v
 	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.Name(), ViewHumanShow(v), ViewPercent(ed+1, fileSize), remainTime, ViewHumanShow(fileSize))
 
-	if err != nil {
-		return nil, err
-	}
 	return objs, nil
 }
 func (cli *OneClient) APIUploadSourcePart(task UploadTask, URL string, position int64, fileSize int64) error {
@@ -316,8 +317,10 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 	}
 	defer task.Close()
 
-	//cur.URL = uploadURL
-	uploadURL = AcceleratedURL(uploadURL)
+	//fix issue 5. The transfer upload support is not very good and there are many problems.
+	//The upload and transfer function is turned off by default.
+
+	//uploadURL = AcceleratedURL(uploadURL)
 	core.Println("upload url =", uploadURL)
 
 	err = cli.APIUploadSourcePart(task, uploadURL, position, task.Size())
