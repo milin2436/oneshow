@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -66,7 +65,8 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 			s := fmt.Sprintf(`<div><a href="/vfs?path=%s">%s/</a></div>`, dirPath+v.Name, v.Name)
 			buff.WriteString(s)
 		} else {
-			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size), url.QueryEscape(v.DownloadURL))
+			//s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size), url.QueryEscape(v.DownloadURL))
+			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s </div>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size))
 			buff.WriteString(s)
 		}
 		//buff.WriteString("<br />")
