@@ -13,6 +13,8 @@
 9.支持linux和windows系统，其他设备请自行构建   
 10.支持通过配置文件，自定义使用自己的onedrive API   
 11.支持webdav挂载时，通过配置加速地址，以达到加速下载onedrive文件的目的   
+12.支持可断点下载的URL资源，直接上传到网盘，无需下载到本地后再上次  
+
 
 
 # 使用
@@ -56,7 +58,7 @@ d               download a file or dir or URL to local
 
 ```
 
-首先通过oneshow auth增加一个用户的帐号配置，通过onedrive的授权后，配置文件保存在用户目录的~/.od.json文件中,然后通过oneshow saveUser alias，就保存了一个别名为alias的配置文件，当要使用这个账户时候通过oneshow su alias,切换到这个用户，主要通过用户主目录下的.od_cur_user.id文件来指定当前用户，可通过oneshow who来查看当前用户是谁。
+首先通过oneshow auth增加一个用户的帐号配置，该操作请在桌面环境执行以及事先安装好浏览器，用户在浏览器上操作同意受权oneshow应用后，保存登录信息的文件会自动生成和保存在用户目录的~/.od.json文件中,然后通过oneshow saveUser alias，就保存了一个别名为alias的配置文件，当要使用这个账户时候通过oneshow su alias,切换到这个用户，主要通过用户主目录下的.od_cur_user.id文件来指定当前用户，可通过oneshow who来查看当前用户是谁。
 
 其他命令的用法，比如查询ls子命令帮助，可通过执行 oneshow ls -h 查看命令的详细使用方法。
 
@@ -99,7 +101,7 @@ oneshowuser=u1 ./oneshow webdav -u 127.0.0.1:4444
 ./oneshow u -s /test -f /other
 
 ```
-下面下载/test下的所有文件，到当前目录，可用-d ”下载目录“，来指定目录:
+下面命令是下载/test下的所有文件，到当前目录，可用-d ”下载目录“，来指定下载到目标目录:
 ```
 ./oneshow d /test
 
@@ -115,10 +117,16 @@ oneshowuser=u1 ./oneshow webdav -u 127.0.0.1:4444
 ./oneshow web  -u 127.0.0.1:4444
 
 ```
-开启一个webdav服务，绑定到127.0.0.1:4444，ubuntu下，打开文件管理的连接到服务器，通过dav://127.0.0.1:4444/ 就可将onedrive挂载到本地。该功能还属于实验阶段，不支持上传功能也不支持设置密码认证，为了安全请在本地使用，浏览和下载功能经测试没有什么大问题。
+开启一个webdav服务，绑定到127.0.0.1:4444，ubuntu下，打开文件管理的连接到服务器，通过dav://127.0.0.1:4444/ 就可将onedrive挂载到本地。该功能不支持上传功能和移动目录，支持设置密码认证，为了信息安全在远程启用webdav服务时候请开启https协议和加入帐号认证，浏览和下载、直接播放视频等功能经测试没有什么大问题。
 
 ```
 ./oneshow webdav -u 127.0.0.1:4444
+
+```
+下面命令为开启一个TLS通道webdav服务，认证的用户和密码为username、password，证书和密钥文件为test.crt、test.key，绑定的服务端口为4444
+
+```
+./oneshow webdav -user username -passwd password -c test.crt -k test.key -u :4444
 
 ```
 
