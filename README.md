@@ -13,7 +13,7 @@
 9.支持linux和windows系统，其他设备请自行构建   
 10.支持通过配置文件，自定义使用自己的onedrive API   
 11.支持webdav挂载时，通过配置加速地址，以达到加速下载onedrive文件的目的   
-12.支持可断点下载的URL资源，直接上传到网盘，无需下载到本地后再上次  
+12.支持可断点下载的URL资源，直接上传到网盘，无需下载到本地后再上传  
 
 
 
@@ -58,7 +58,7 @@ d               download a file or dir or URL to local
 
 ```
 
-首先通过oneshow auth增加一个用户的帐号配置，该操作请在桌面环境执行以及事先安装好浏览器，用户在浏览器上操作同意受权oneshow应用后，保存登录信息的文件会自动生成和保存在用户目录的~/.od.json文件中,然后通过oneshow saveUser alias，就保存了一个别名为alias的配置文件，当要使用这个账户时候通过oneshow su alias,切换到这个用户，主要通过用户主目录下的.od_cur_user.id文件来指定当前用户，可通过oneshow who来查看当前用户是谁。
+首先通过oneshow auth增加一个用户的帐号配置，该操作请在桌面环境执行以及事先安装好浏览器，用户在浏览器上操作同意受权oneshow应用后，保存登录信息的文件会自动生成和保存在用户目录的~/.config/oneshow/.od.json文件中,其中~/.config/oneshow/用户的oneshow配置目录(所有配置皆放在这个目录下),然后通过oneshow saveUser alias，就保存了一个别名为alias的配置文件，当要使用这个账户时候通过oneshow su alias,切换到这个用户，主要通过配置目录下的.od_cur_user.id文件来指定当前用户，可通过oneshow who来查看当前用户是谁。
 
 其他命令的用法，比如查询ls子命令帮助，可通过执行 oneshow ls -h 查看命令的详细使用方法。
 
@@ -86,9 +86,9 @@ list onedrive path
 
 ```
 
-可通过环境变量oneshowuser来使用某个特定用户的onedrive，而忽略从.od_cur_user.id读取当前用户信息，用于当想要在一个终端启动多个用户的webdav服务时。比如存在u1用户，启动他的webdav服务，在linux下可使用命令:
+可通过环境变量oneshowuser来使用某个特定用户的onedrive，而忽略从.od_cur_user.id读取当前用户信息。比如存在u1用户，打印他的网盘配额信息，在linux下可使用命令:
 ```
-oneshowuser=u1 ./oneshow webdav -u 127.0.0.1:4444
+oneshowuser=u1 ./oneshow info
 
 ```
 
@@ -120,17 +120,17 @@ oneshowuser=u1 ./oneshow webdav -u 127.0.0.1:4444
 开启一个webdav服务，绑定到127.0.0.1:4444，ubuntu下，打开文件管理的连接到服务器，通过dav://127.0.0.1:4444/ 就可将onedrive挂载到本地。该功能不支持上传功能和移动目录，支持设置密码认证，为了信息安全在远程启用webdav服务时候请开启https协议和加入帐号认证，浏览和下载、直接播放视频等功能经测试没有什么大问题。
 
 ```
-./oneshow webdav -u 127.0.0.1:4444
+./oneshow webdav -u 127.0.0.1:4444 -ss user_alias
 
 ```
-下面命令为开启一个TLS通道webdav服务，认证的用户和密码为username、password，证书和密钥文件为test.crt、test.key，绑定的服务端口为4444
+下面命令为开启一个TLS通道webdav服务，认证的用户和密码为username、password，证书和密钥文件为test.crt、test.key，绑定的服务端口为4444，ss参数为指定的username,如果将多个用户挂载到同一个webdav进程以";"隔开多个用户，例如 -ss "u1;u2;u3"这样的形式，这样u1用户的webdav资源路径就为/u1
 
 ```
-./oneshow webdav -user username -passwd password -c test.crt -k test.key -u :4444
+./oneshow webdav -user username -passwd password -c test.crt -k test.key -u :4444 -ss "u1;u2;u3"
 
 ```
 
-由于在中国境内，没有onedrive服务器，访问国际版时速度非常不稳定，故提供一个加速接口功能。思路为将onedrive的下载链接，通过参数传递给加速的中间服务器，以达到加速目的。以我个人的经验，移动用户的最佳实践为cloudflare workers加上自选ipv6 cloudflare CDN非常稳定，在线看4k视频没有什么问题。oneshow程序的配置文件为.oneshow.json，请务必将该文件建在当前用户目录下。
+由于在中国境内，没有onedrive服务器，访问国际版时速度非常不稳定，故提供一个加速接口功能。思路为将onedrive的下载链接，通过参数传递给加速的中间服务器，以达到加速目的。以我个人的经验，移动用户的最佳实践为cloudflare workers加上优选cloudflare CDN ip 这个方案非常稳定，在线看4k视频没有什么问题。oneshow程序的配置文件为.oneshow.json，请务必将该文件建在用户配置目录下。
 配置文件为json格式，accelerated_api为加速地址，acceleration为加速开关，只有当acceleration为true而且accelerated_api不为空的情况下，才会生效加速功能。
 
 ```JSON
