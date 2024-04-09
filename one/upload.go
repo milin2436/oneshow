@@ -7,7 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
+	//"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -44,7 +44,12 @@ func (cli *OneClient) APIGetUploadFileInfo(URL string) (*UploadURLResult, error)
 
 func (cli *OneClient) APICreateUploadSession(driveID string, path string) (*UploadURLResult, error) {
 	uri := "/drives/%s/root:%s:/createUploadSession"
-	path = url.QueryEscape(path)
+	//path = url.PathEscape(path)
+	//path = EncodePath(path,true)
+
+	//rclone
+	path = URLPathEscape(path)
+	fmt.Println("sss=",path)
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
 	if path == "/" {
 		uri := "/drives/%s/root/createUploadSession"
