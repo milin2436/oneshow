@@ -9,7 +9,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -339,28 +338,6 @@ func (of *OneFile) Sys() interface{} {
 	return nil
 }
 
-func (of *OneFile) getRightBufferSize() int {
-	lname := strings.ToLower(of.Name())
-	//video file
-	if strings.HasSuffix(lname, ".mp4") ||
-		strings.HasSuffix(lname, ".mkv") ||
-		strings.HasSuffix(lname, ".wmv") ||
-		strings.HasSuffix(lname, ".webm") ||
-		strings.HasSuffix(lname, ".avi") ||
-		strings.HasSuffix(lname, ".rmvb") ||
-		strings.HasSuffix(lname, ".rm") {
-		return 25 * MB
-	}
-	// 1G+
-	if int64(1024*MB) < of.Size() {
-		return 25 * MB
-	}
-
-	if of.Size() > int64(200*MB) && of.Size() <= int64(1024*MB) {
-		return 10 * MB
-	}
-	return MB
-}
 func (of *OneFile) getBuff(size int) *bytes.Buffer {
 	buff := new(bytes.Buffer)
 	buff.Grow(size)
