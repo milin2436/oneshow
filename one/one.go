@@ -523,6 +523,28 @@ func (cli *OneClient) Download(file string, downloadDir string, a bool) {
 	}
 }
 
+func (cli *OneClient) Download4Web(file string, downloadDir string, a bool, tc *ThreadControl) *DWorker {
+	wk := NewDWorker()
+	dri, err := cli.APIGetFile(cli.CurDriveID, file)
+	if err != nil {
+		fmt.Println("err = ", err)
+		wk.Error = err
+		return wk
+	}
+	wk.HTTPCli = cli.HTTPClient
+	wk.AuthSve = cli
+	wk.DownloadDir = downloadDir
+	wk.Proxy = a
+	wk.TaskCtl = tc
+	err = wk.Download(dri.DownloadURL)
+	if err != nil {
+		fmt.Println("failed on ", err, " for ", file)
+		wk.Error = err
+		return wk
+	}
+	return wk
+}
+
 func callShellCB(cmd string, URL ...string) error {
 	mycmd := exec.Command(cmd, URL...)
 	err := mycmd.Start()
