@@ -605,7 +605,7 @@ func (cli *OneClient) DoAutoForNewUser() {
 		fmt.Println("run http server to failed,server err = ", err)
 	}
 }
-func mytest() {
+func Mytest() {
 
 	//core.Debug = false
 
@@ -617,29 +617,11 @@ func mytest() {
 
 	//API##########
 
-	cli.APIGetMeDrive()
-
-	resp, err := cli.APIListFilesByPath(cli.CurDriveID, "/backup/pics/indexbj")
+	dri, err := cli.APIGetMeDrive()
 	if err != nil {
 		fmt.Println("err = ", err)
 		return
 	}
-	fmt.Println("len=", len(resp.Value))
-
-	for _, val := range resp.Value {
-		fmt.Println(val.Name)
-		fmt.Println(val.ID)
-		fmt.Println(val.Size)
-		fmt.Println(val.GetSize())
-	}
-	/*
-		//cli.APISearchByKey(cli.CurDriveID, "test")
-
-			err := cli.UploadSource("bona1.mkv", cli.CurDriveID, "/test/")
-			if err != nil {
-				fmt.Println("err = ", err)
-				return
-			}
-	*/
+	fmt.Println(dri.ID)
 
 }
