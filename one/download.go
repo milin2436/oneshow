@@ -280,7 +280,7 @@ func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (string, in
 	//RANGE: bytes=100000-
 	header := map[string]string{}
 	header["RANGE"] = "bytes=0-1"
-	wk.addAutoHTTPHeader(header)
+	//wk.addAutoHTTPHeader(header)
 	resp, err := wk.HTTPCli.HttpGet(uurl, header, nil)
 	if err != nil {
 		return "", 0, false, err
@@ -307,7 +307,7 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 	log.Println("header range :", rangeHeader)
 	header := map[string]string{}
 	header["RANGE"] = rangeHeader
-	wk.addAutoHTTPHeader(header)
+	//wk.addAutoHTTPHeader(header)
 	resp, err := wk.HTTPCli.HttpGet(uurl, header, nil)
 	if err != nil {
 		return errors.New(fmt.Sprint("download ", uurl, " failed", err))
