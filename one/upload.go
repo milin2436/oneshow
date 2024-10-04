@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+
 	//"net/url"
 	"os"
 	"path/filepath"
@@ -49,7 +50,7 @@ func (cli *OneClient) APICreateUploadSession(driveID string, path string) (*Uplo
 
 	//rclone
 	path = URLPathEscape(path)
-	fmt.Println("sss=",path)
+	fmt.Println("sss=", path)
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
 	if path == "/" {
 		uri := "/drives/%s/root/createUploadSession"
@@ -189,7 +190,7 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 	uploadURL := ""
 	if err == nil && !infoTmp.IsDir() {
 		//continue upload
-		text, err := ioutil.ReadFile(fileInfo)
+		text, err := os.ReadFile(fileInfo)
 		if err != nil {
 			return err
 		}

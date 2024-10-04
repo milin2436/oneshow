@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,7 +48,7 @@ func getCurUser() string {
 		user = envUser
 		fmt.Println("user envUser :", user)
 	} else {
-		buff, err := ioutil.ReadFile(filepath.Join(home, CurUser))
+		buff, err := os.ReadFile(filepath.Join(home, CurUser))
 		if err != nil {
 			user = ""
 		} else {
@@ -71,7 +70,7 @@ func (u *OneClient) setUserInfo(name string) {
 }
 func (u *OneClient) findConfigFile() (string, error) {
 	home := GetConfigDir()
-	buff, err := ioutil.ReadFile(filepath.Join(home, u.ConfigFile))
+	buff, err := os.ReadFile(filepath.Join(home, u.ConfigFile))
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +84,7 @@ func InitOneShowConfig() {
 	home := GetConfigDir()
 	if home != "" {
 		fullPath := filepath.Join(home, OneshowConfigFile)
-		buff, err := ioutil.ReadFile(fullPath)
+		buff, err := os.ReadFile(fullPath)
 		if err != nil {
 			return
 		}
@@ -160,5 +159,5 @@ func SaveToken2Config(token *AuthToken, configFile string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(configFile, buff, 0660)
+	return os.WriteFile(configFile, buff, 0660)
 }

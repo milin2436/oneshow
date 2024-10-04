@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -59,7 +58,7 @@ func taskWorker(goid int, cli *one.OneClient) {
 }
 
 func batchUpload(cli *one.OneClient, curDir string, descDir string) {
-	fileList, err := ioutil.ReadDir(curDir)
+	fileList, err := os.ReadDir(curDir)
 	if err != nil {
 		fmt.Println("error in loop dir,err = ", err)
 		return

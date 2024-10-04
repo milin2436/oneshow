@@ -50,7 +50,7 @@ func Who() (string, error) {
 }
 func loopDir(dirName string) ([]string, error) {
 	li := []string{}
-	fileList, err := ioutil.ReadDir(dirName)
+	fileList, err := os.ReadDir(dirName)
 	if err != nil {
 		return nil, err
 	}

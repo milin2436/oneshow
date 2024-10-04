@@ -287,7 +287,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 	uploadURL := ""
 	if err == nil && !infoTmp.IsDir() {
 		//continue upload
-		text, err := ioutil.ReadFile(fileInfo)
+		text, err := os.ReadFile(fileInfo)
 		if err != nil {
 			return err
 		}
