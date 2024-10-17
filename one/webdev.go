@@ -113,10 +113,7 @@ func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
 }
 
 func isIncludeOp(op int, flag int) bool {
-	if (flag & op) == op {
-		return true
-	}
-	return false
+	return (flag & op) == op
 }
 
 //Mkdir create a directory
@@ -326,10 +323,7 @@ func (of *OneFile) ModTime() time.Time {
 //IsDir whether this oneFile is a directory
 func (of *OneFile) IsDir() bool {
 	fmt.Println("OneFile.isDir", of.Name())
-	if of.item.Folder != nil {
-		return true
-	}
-	return false
+	return of.item.Folder != nil
 }
 
 //Sys return nil one onedrive

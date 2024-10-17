@@ -115,13 +115,13 @@ func setupOneShowConfig() {
 func (u *OneClient) getConfigAuthToken() *AuthToken {
 	//HOME USER PWD SHELL
 	cfg := new(AuthToken)
-	content, err := u.findConfigFile()
+	content, _ := u.findConfigFile()
 	//fmt.Println(content)
 	if content == "" {
 		fmt.Println("can not find config file")
 		return nil
 	}
-	err = json.Unmarshal([]byte(content), cfg)
+	err := json.Unmarshal([]byte(content), cfg)
 	if err != nil {
 		fmt.Println("err = ", err)
 		return nil

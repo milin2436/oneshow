@@ -14,26 +14,10 @@ import (
 
 func AutoUpdateToken(cli *one.OneClient) {
 	for {
-		CheckToken(cli)
+		cli.VerifyAndUpdateForToken()
 		time.Sleep(time.Minute)
 	}
 }
-func CheckToken(cli *one.OneClient) error {
-	expires := time.Time(cli.Token.ExpiresTime)
-
-	expires = expires.Truncate(time.Minute)
-	if time.Now().After(expires) {
-		//fmt.Println("to expries time, update token")
-		newToken, err := cli.UpdateToken()
-		if err != nil {
-			return err
-		}
-		cli.Token = newToken
-	}
-	return nil
-
-}
-
 func OutHtml(body string) string {
 	html := `
 	<html>
@@ -129,7 +113,7 @@ func Serivce(address string, https bool) {
 		if strLen > 1 && dirPath[strLen-1] == '/' {
 			dirPath = dirPath[:strLen-1]
 		}
-		err := CheckToken(cli)
+		err := cli.VerifyAndUpdateForToken()
 		if err != nil {
 			w.Write([]byte(err.Error()))
 			return

@@ -613,3 +613,18 @@ func Mytest() {
 	fmt.Println(dri.ID)
 
 }
+
+func (cli *OneClient) VerifyAndUpdateForToken() error {
+	expires := time.Time(cli.Token.ExpiresTime)
+	expires = expires.Truncate(time.Minute)
+	if time.Now().After(expires) {
+		//fmt.Println("to expries time, update token")
+		newToken, err := cli.UpdateToken()
+		if err != nil {
+			return err
+		}
+		cli.Token = newToken
+	}
+	return nil
+
+}

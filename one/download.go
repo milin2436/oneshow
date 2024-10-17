@@ -75,15 +75,15 @@ func GetDownloadFileName(u *url.URL, fileName string, disposition string) string
 	return u.Path
 }
 
-func parseRangeCookie(strConRge string) (error, int64) {
+func parseRangeCookie(strConRge string) (int64, error) {
 	//Content-Range:[bytes 0-1/707017362]
 	idx := strings.Index(strConRge, "/")
 	if idx == -1 {
-		return errors.New("format error in " + strConRge), 0
+		return 0, errors.New("format error in " + strConRge)
 	}
 	strSize := strConRge[idx+1:]
 	ret, err := strconv.ParseInt(strSize, 10, 64)
-	return err, ret
+	return ret, err
 }
 func PathExists(path string) bool {
 	_, err := os.Stat(path)
@@ -108,27 +108,27 @@ func recordFilePosion(f *os.File, position int64) error {
 	_, err = f.Write(part)
 	return err
 }
-func readFilePosion(f *os.File) (error, int64) {
+func readFilePosion(f *os.File) (int64, error) {
 	_, err := f.Seek(0, os.SEEK_SET)
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	part := make([]byte, 8)
 	_, err = io.ReadFull(f, part)
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	var ret, tmp int64
 	for i := 0; i < 8; i++ {
 		tmp = int64(part[i]) << uint((7-i)*8)
 		ret = tmp + ret
 	}
-	return nil, ret
+	return ret, nil
 }
-func lookSize(rdFile string) (error, int64) {
+func lookSize(rdFile string) (int64, error) {
 	tfile, err := os.OpenFile(rdFile, os.O_RDWR, 0700)
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	defer tfile.Close()
 	return readFilePosion(tfile)
@@ -190,7 +190,7 @@ func (wk *DWorker) Download(url string) error {
 		if err != nil {
 			return err
 		}
-		err, curPosion = readFilePosion(tfile)
+		curPosion, err = readFilePosion(tfile)
 		if err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ func (wk *DWorker) Download(url string) error {
 		}
 		cnt++
 		log.Println("a error = ", err, " start new http connect....,try again ", cnt)
-		err, curPosion = readFilePosion(tfile)
+		curPosion, err = readFilePosion(tfile)
 		if err != nil {
 			log.Println("read position to failed,finish this task")
 			return err
@@ -294,7 +294,7 @@ func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (string, in
 	if strConRge == "" {
 		return realName, 0, false, nil
 	}
-	err, fileSize := parseRangeCookie(strConRge)
+	fileSize, err := parseRangeCookie(strConRge)
 	log.Println("response header ", strConRge, " fileSize = ", ViewHumanShow(fileSize))
 	if err != nil {
 		return "", 0, true, err
