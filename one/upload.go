@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
 	//"net/url"
@@ -212,7 +211,7 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 			return err
 		}
 		uploadURL = ret.UploadURL
-		ioutil.WriteFile(fileInfo, []byte(uploadURL), 0661)
+		os.WriteFile(fileInfo, []byte(uploadURL), 0661)
 	}
 	file, err := os.Open(srcFile)
 	if err != nil {

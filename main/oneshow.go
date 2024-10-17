@@ -550,7 +550,7 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#webdav
 	pro.Name = "webdav"
-	pro.Desc = "run webdav service for onedirve (only read)(beta version)"
+	pro.Desc = "run webdav service for onedirve (only read)"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
@@ -918,7 +918,13 @@ func setFuns(ct *cmd.Context) {
 	}
 }
 func main() {
-	core.Debug = false
+	isDebug := os.Getenv("oneshowdebug")
+	isDebug = strings.TrimSpace(isDebug)
+	if isDebug == "true" {
+		core.Debug = true
+	} else {
+		core.Debug = false
+	}
 	one.InitOneShowConfig()
 	ct := cmd.NewContext()
 	setFuns(ct)

@@ -6,10 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -39,17 +37,6 @@ type OneClient struct {
 	ConfigFile string
 	Token      *AuthToken
 	CurDriveID string
-}
-
-func setProxy4Client(HC *chttp.HttpClient) {
-	//export proxy=socks5://127.0.0.1:7744
-	proxy := os.Getenv("proxy")
-	if strings.Contains(proxy, "socks") {
-		HC.SetProxy(proxy)
-	}
-	if strings.Contains(proxy, "http") {
-		HC.SetProxy(proxy)
-	}
 }
 
 //NewDefaultCli new a default oneshow client
@@ -441,7 +428,7 @@ func HandleResponForParseAPI(resp *http.Response, err error, objs interface{}) e
 	if err != nil {
 		return err
 	}
-	buff, err := ioutil.ReadAll(resp.Body)
+	buff, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
