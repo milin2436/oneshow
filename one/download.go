@@ -451,3 +451,31 @@ func webdavGetFileFromPosition(cli *chttp.HttpClient, uurl string, position int6
 	//1M 1k*1024
 	return resp.Body, nil
 }
+
+func (cli *OneClient) BatchDownload(curDir string, descDir string, a bool) {
+	fileList, err := cli.APIListFilesByPath(cli.CurDriveID, curDir)
+	if err != nil {
+		fmt.Println("error in loop dir,err = ", err)
+		return
+	}
+	for _, f := range fileList.Value {
+		if f.Folder != nil {
+			cli.BatchDownload(filepath.Join(curDir, f.Name), filepath.Join(descDir, f.Name), a)
+			continue
+		}
+		path := filepath.Join(curDir, f.Name)
+		fmt.Println("donwloading  ", path)
+		err = os.MkdirAll(descDir, 0771)
+		if err != nil {
+			fmt.Println("create dir to failed ", err)
+			break
+		}
+		localFilePath := filepath.Join(descDir, f.Name)
+		localFilePathTmp := filepath.Join(descDir, f.Name+".finfo")
+		if PathExists(localFilePath) && !PathExists(localFilePathTmp) {
+			fmt.Println("The file exists,skip it : ", localFilePath)
+			continue
+		}
+		cli.Download(path, descDir, a)
+	}
+}
