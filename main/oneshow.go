@@ -436,7 +436,7 @@ func setFuns(ct *cmd.Context) {
 		if ct.ParamGroupMap["s"] != nil {
 			https = true
 		}
-		Serivce(address, https)
+		StartWebSerivce(address, https)
 	}
 	pro = new(cmd.Program)
 	//#webdav
@@ -517,8 +517,8 @@ func setFuns(ct *cmd.Context) {
 		if ssp != nil {
 			ss = ssp.Value
 		}
-		fmt.Println("sss = ", ss)
-		Webdav(address, user, passwd, cert, key, ss)
+		fmt.Println("sources : ", ss)
+		StartWebdavService(address, user, passwd, cert, key, ss)
 	}
 	pro = new(cmd.Program)
 	//#users
