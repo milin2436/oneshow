@@ -538,7 +538,8 @@ func setFuns(ct *cmd.Context) {
 			cmd.PrintCmdHelp(pro)
 			return
 		}
-		li, err := ListUsers()
+		cm := new(one.ConfigManager)
+		li, err := cm.ListUsers()
 		if err != nil {
 			fmt.Println("err = ", err)
 			return
@@ -576,7 +577,8 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("user name cannot be empty")
 			return
 		}
-		err := SwitchUser(user)
+		cm := new(one.ConfigManager)
+		err := cm.SwitchUser(user)
 		if err != nil {
 			fmt.Println("err = ", err)
 		} else {
@@ -608,7 +610,8 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("user name cannot be empty")
 			return
 		}
-		err := SaveUser(user)
+		cm := new(one.ConfigManager)
+		err := cm.SaveUser(user)
 		if err != nil {
 			fmt.Println("err = ", err)
 		} else {
@@ -634,7 +637,8 @@ func setFuns(ct *cmd.Context) {
 			cmd.PrintCmdHelp(pro)
 			return
 		}
-		userName, err := Who()
+		cm := new(one.ConfigManager)
+		userName, err := cm.Who()
 		if err != nil {
 			fmt.Println("who command call failed, err = ", err)
 		} else {
