@@ -405,20 +405,20 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["s"] = &cmd.ParamDef{
-		"s",
-		"https",
-		false,
-		"enable https service ,need cacert.pem ,privkey.pem on current dir"}
+		Name:      "s",
+		LongName:  "https",
+		NeedValue: false,
+		Desc:      "enable https service ,need cacert.pem ,privkey.pem on current dir"}
 	pro.ParamDefMap["u"] = &cmd.ParamDef{
-		"u",
-		"url",
-		true,
-		"setup service address for this service,as -u :5555"}
+		Name:      "u",
+		LongName:  "url",
+		NeedValue: true,
+		Desc:      "setup service address for this service,as -u :5555"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -446,40 +446,40 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["u"] = &cmd.ParamDef{
-		"u",
-		"url",
-		true,
-		"setup listen address for this service,as -u :5555"}
+		Name:      "u",
+		LongName:  "url",
+		NeedValue: true,
+		Desc:      "setup listen address for this service,as -u :5555"}
 	pro.ParamDefMap["user"] = &cmd.ParamDef{
-		"user",
-		"user",
-		true,
-		"setup webdav user"}
+		Name:      "user",
+		LongName:  "user",
+		NeedValue: true,
+		Desc:      "setup webdav user"}
 	pro.ParamDefMap["passwd"] = &cmd.ParamDef{
-		"passwd",
-		"password",
-		true,
-		"setup webdav password"}
+		Name:      "passwd",
+		LongName:  "password",
+		NeedValue: true,
+		Desc:      "setup webdav password"}
 	pro.ParamDefMap["c"] = &cmd.ParamDef{
-		"c",
-		"cert",
-		true,
-		"setup https cert file"}
+		Name:      "c",
+		LongName:  "cert",
+		NeedValue: true,
+		Desc:      "setup https cert file"}
 	pro.ParamDefMap["k"] = &cmd.ParamDef{
-		"k",
-		"key",
-		true,
-		"setup webdav key file"}
+		Name:      "k",
+		LongName:  "key",
+		NeedValue: true,
+		Desc:      "setup webdav key file"}
 	pro.ParamDefMap["ss"] = &cmd.ParamDef{
-		"ss",
-		"serverlist",
-		true,
-		"server list as 0all;all1"}
+		Name:      "ss",
+		LongName:  "serverlist",
+		NeedValue: true,
+		Desc:      "server list as 0all;all1"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
@@ -528,10 +528,10 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
@@ -561,10 +561,10 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -594,10 +594,10 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -626,10 +626,10 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -655,20 +655,20 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["d"] = &cmd.ParamDef{
-		"d",
-		"detail",
-		false,
-		"show full path of file"}
+		Name:      "d",
+		LongName:  "detail",
+		NeedValue: false,
+		Desc:      "show full path of file"}
 	pro.ParamDefMap["dn"] = &cmd.ParamDef{
-		"dn",
-		"download",
-		false,
-		"download file for search result,default save files to search-dn directory,and depend -d flag"}
+		Name:      "dn",
+		LongName:  "download",
+		NeedValue: false,
+		Desc:      "download file for search result,default save files to search-dn directory,and depend -d flag"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -743,21 +743,21 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["f"] = &cmd.ParamDef{
-		"f",
-		"file",
-		true,
-		"will move file"}
+		Name:      "f",
+		LongName:  "file",
+		NeedValue: true,
+		Desc:      "will move file"}
 
 	pro.ParamDefMap["n"] = &cmd.ParamDef{
-		"n",
-		"newName",
-		true,
-		"new name"}
+		Name:      "n",
+		LongName:  "newName",
+		NeedValue: true,
+		Desc:      "new name"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {

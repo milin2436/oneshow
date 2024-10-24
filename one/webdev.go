@@ -1,7 +1,6 @@
 package one
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -79,13 +78,6 @@ func (fs *OneFileSystem) Copy(cache *OneFile) *OneFile {
 	ret.FullPath = cache.FullPath
 	return ret
 }
-func (fs *OneFileSystem) cacheItemCheckExist(name string, item *Item) *OneFile {
-	of := fs.Cache[name]
-	if of == nil {
-		return fs.CacheItem(name, item)
-	}
-	return of
-}
 func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
 	fmt.Println("fs.getFileFromCache :", name)
 	of := fs.Cache[name]
@@ -146,7 +138,7 @@ func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, pe
 		}
 		return of, err
 	}
-	return nil, errors.New("No support")
+	return nil, errors.New("no support")
 }
 
 //RemoveAll Move files and directories to the recycle bin
@@ -330,12 +322,6 @@ func (of *OneFile) IsDir() bool {
 func (of *OneFile) Sys() interface{} {
 	fmt.Println("OneFile.Sys", of.Name())
 	return nil
-}
-
-func (of *OneFile) getBuff(size int) *bytes.Buffer {
-	buff := new(bytes.Buffer)
-	buff.Grow(size)
-	return buff
 }
 
 func (of *OneFile) closeRemoteStream() {

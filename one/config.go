@@ -181,8 +181,13 @@ func (cm *ConfigManager) SaveUser(user string) error {
 }
 func (cm *ConfigManager) SwitchUser(user string) error {
 	home := GetConfigDir()
-	decFile := filepath.Join(home, CurUser)
-	return os.WriteFile(decFile, []byte(user), 0660)
+
+	userDecFilepath := filepath.Join(home, configUserFile+user)
+	if core.ExistFile(userDecFilepath) {
+		decFile := filepath.Join(home, CurUser)
+		return os.WriteFile(decFile, []byte(user), 0660)
+	}
+	return fmt.Errorf("the configuration file for the %s user does not exist", user)
 }
 func (cm *ConfigManager) copyUser(userSrc string, userDec string) error {
 	src, err := os.Open(userSrc)
