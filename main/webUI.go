@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -28,6 +29,18 @@ func OutHtml(body string) string {
 		<body>
 			%s
 		</body>
+			<script type="text/javascript">
+				let nList = document.querySelectorAll(".cylx");
+				for(xx of nList){
+					let url = new URL(xx.href);
+
+					let modifiedUrlString = url.toString();
+					let param = encodeURIComponent(modifiedUrlString);
+					let mpvSource = "cylx://"+param;
+					console.info(mpvSource);
+					xx.href = mpvSource;
+				};
+			</script>
 	</html>
 	`
 	ret := fmt.Sprintf(html, body)
@@ -52,11 +65,27 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 		} else {
 			//s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size), url.QueryEscape(v.DownloadURL))
 			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s </div>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size))
+			if isVideoFile(v.Name) {
+				s = fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s &nbsp&nbsp&nbsp&nbsp<a class="cylx" href="%s">open mpv</a> </div>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size), v.DownloadURL)
+			}
 			buff.WriteString(s)
 		}
 		//buff.WriteString("<br />")
 	}
 	return buff.String()
+}
+
+func isVideoFile(filename string) bool {
+	videoExtensions := []string{".mp4", ".mkv", ".avi", ".mov", ".wmv", ".flv", ".webm"}
+
+	ext := strings.ToLower(filepath.Ext(filename))
+
+	for _, videoExt := range videoExtensions {
+		if ext == videoExt {
+			return true
+		}
+	}
+	return false
 }
 
 func StartWebSerivce(address string, https bool) {
