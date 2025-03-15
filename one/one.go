@@ -577,8 +577,13 @@ func (cli *OneClient) DoAutoForNewUser() {
 		if dd == "" {
 			return
 		}
-		cli.GetFirstToken(dd)
-		w.Write([]byte("save token to local"))
+		err := cli.GetFirstToken(dd)
+		if err != nil {
+			ss := fmt.Sprintf("Token saved to failed err = %s", err.Error())
+			w.Write([]byte(ss))
+		} else {
+			w.Write([]byte("Token saved to local successfully."))
+		}
 		go func() {
 			time.Sleep(time.Second * 3)
 			server.Shutdown(context.Background())
@@ -586,12 +591,11 @@ func (cli *OneClient) DoAutoForNewUser() {
 	})
 	err := server.ListenAndServe()
 	if err != nil && http.ErrServerClosed == err {
-		fmt.Println("done all")
-		return
+		fmt.Println("Token saved successfully, temporary HTTP server shut down and exited.")
+	} else {
+		fmt.Println("HTTP server start to failed,err = ", err)
 	}
-	if err != nil {
-		fmt.Println("run http server to failed,server err = ", err)
-	}
+
 }
 func Mytest() {
 

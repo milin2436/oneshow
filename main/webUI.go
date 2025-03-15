@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -66,36 +65,6 @@ func StartWebSerivce(address string, https bool) {
 		panic(err1.Error())
 	}
 
-	http.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
-		fetchURL := utils.GetQueryParamByKey(r, "url")
-		method := utils.GetQueryParamByKey(r, "method")
-		if method == "" {
-			method = "GET"
-		}
-		if fetchURL == "" {
-			w.Write([]byte("fetch method : url can not be empty."))
-			return
-		}
-		headers := map[string]string{}
-		for k, v := range r.Header {
-			headers[k] = v[0]
-		}
-		fetchResp, err := cli.HTTPClient.HttpRequest(method, fetchURL, headers, "")
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		//respose line
-		w.WriteHeader(fetchResp.StatusCode)
-
-		//header
-		for k, v := range fetchResp.Header {
-			w.Header().Add(k, v[0])
-		}
-		//body
-		io.Copy(w, fetchResp.Body)
-	})
-
 	http.HandleFunc("/vfs", func(w http.ResponseWriter, r *http.Request) {
 		dirPath := utils.GetQueryParamByKey(r, "path")
 		if dirPath == "" {
@@ -126,6 +95,18 @@ func StartWebSerivce(address string, https bool) {
 		w.Write([]byte(html))
 	})
 
+	dm := one.NewDM()
+	go dm.Start()
+	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
+		dirPath := utils.GetQueryParamByKey(r, "path")
+		err := cli.VerifyAndUpdateForToken()
+		if err != nil {
+			w.Write([]byte(err.Error()))
+		} else {
+			dm.AddTask(cli.HTTPClient, dirPath, "/home/super/mem", false)
+			w.Write([]byte(dirPath))
+		}
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"ok\"}"))
 	})
