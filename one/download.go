@@ -563,6 +563,7 @@ func (dm *DownloadManager) CandelTask(id int) {
 	}
 	dm.DispatchNotify(-1)
 }
+
 func (dm *DownloadManager) RestartTask(id int) {
 	var task *DWorker = nil
 	dm.dataLock.RLock()
@@ -577,6 +578,9 @@ func (dm *DownloadManager) RestartTask(id int) {
 	//TODO task lock
 	if task != nil {
 		if task.Status == 2 {
+			c, fn := context.WithCancel(dm.rootContext)
+			task.TaskCtl.Cancel = c
+			task.TaskCtl.CancelFn = fn
 			task.Status = 0
 		}
 	}
