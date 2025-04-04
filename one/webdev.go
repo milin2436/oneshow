@@ -80,7 +80,9 @@ func (fs *OneFileSystem) Copy(cache *OneFile) *OneFile {
 }
 func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
 	fmt.Println("fs.getFileFromCache :", name)
+	cacheMutex.RLock()
 	of := fs.Cache[name]
+	cacheMutex.RUnlock()
 	if of == nil {
 		info, err := fs.Client.APIGetFile(fs.Client.CurDriveID, name)
 		fmt.Println("err = ", err)
