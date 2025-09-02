@@ -4,7 +4,7 @@ objs=oneshow.go webUI.go
 ver=v2.0.0-alpha
 $(out) : $(objs)
 	echo $(buildTime)
-	go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out)
+	go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/v2/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out)
 .PHONY : win
 .PHONY : static
 clean :
@@ -13,11 +13,11 @@ clean :
 install :
 	upx $(out)
 win :
-	GOOS=windows GOARCH=386 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out).exe
+	GOOS=windows GOARCH=386 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/v2/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out).exe
 arm64 :
-	GOOS=linux GOARCH=arm64 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out)-arm
+	GOOS=linux GOARCH=arm64 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/v2/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out)-arm
 android :
-	GOOS=android GOARCH=arm64 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out)-android
+	GOOS=android GOARCH=arm64 go build  -ldflags "-s -w -X 'github.com/milin2436/oneshow/v2/cmd.VERSION=$(ver) build time:$(buildTime)' -X 'github.com/milin2436/oneshow/cmd.CmdName=oneshow' "  -o $(out)-android
 static :
 	CGO_ENABLED=0 go build -ldflags "-s -w" -o $(out)
 .PHONY : pkg
