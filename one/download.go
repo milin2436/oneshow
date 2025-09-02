@@ -1,7 +1,7 @@
 package one
 
 import (
-	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	chttp "github.com/milin2436/oneshow/http"
@@ -24,25 +25,49 @@ type AuthService interface {
 
 //DownloadInfo show download info
 type DownloadInfo struct {
-	URL         string
-	FileName    string
-	CurPosition int64
-	Size        int64
-	Desc        string
-	Del         int
+	URL             string
+	FileName        string
+	CurPosition     int64
+	Size            int64
+	Desc            string
+	Del             int
+	Rate            int64
+	LastUpdatedTime time.Time
 }
 
 //DWorker download class
 type DWorker struct {
 	HTTPCli     *chttp.HttpClient
 	CurDownload *DownloadInfo
+	TaskCtl     *ThreadControl
+	//0 wait ; 1 downloading ; 2 cancel ; 3 error ; 4 done
+	Status      int
 	WorkStatus  string
 	cancelFlag  bool //cancel this download
-	suspendFlag bool //supend this download
 	WorkerID    int
 	AuthSve     AuthService
 	DownloadDir string
 	Proxy       bool
+	Error       error
+	dm          *DownloadManager
+}
+
+type ThreadControl struct {
+	Cancel   context.Context
+	CancelFn context.CancelFunc
+}
+
+//DownloadManager manager download task
+type DownloadManager struct {
+	startID       int
+	rootContext   context.Context
+	taskQueue     chan *DWorker
+	closeFlag     chan int
+	dispatchQueue chan int
+	max           int
+	activeCnt     int
+	data          map[string]*DWorker
+	dataLock      sync.RWMutex
 }
 
 //GetDownloadFileName get name of download source
@@ -67,15 +92,15 @@ func GetDownloadFileName(u *url.URL, fileName string, disposition string) string
 	return u.Path
 }
 
-func parseRangeCookie(strConRge string) (error, int64) {
+func parseRangeCookie(strConRge string) (int64, error) {
 	//Content-Range:[bytes 0-1/707017362]
 	idx := strings.Index(strConRge, "/")
 	if idx == -1 {
-		return errors.New("format error in " + strConRge), 0
+		return 0, errors.New("format error in " + strConRge)
 	}
 	strSize := strConRge[idx+1:]
 	ret, err := strconv.ParseInt(strSize, 10, 64)
-	return err, ret
+	return ret, err
 }
 func PathExists(path string) bool {
 	_, err := os.Stat(path)
@@ -100,30 +125,22 @@ func recordFilePosion(f *os.File, position int64) error {
 	_, err = f.Write(part)
 	return err
 }
-func readFilePosion(f *os.File) (error, int64) {
+func readFilePosion(f *os.File) (int64, error) {
 	_, err := f.Seek(0, os.SEEK_SET)
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	part := make([]byte, 8)
 	_, err = io.ReadFull(f, part)
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	var ret, tmp int64
 	for i := 0; i < 8; i++ {
 		tmp = int64(part[i]) << uint((7-i)*8)
 		ret = tmp + ret
 	}
-	return nil, ret
-}
-func lookSize(rdFile string) (error, int64) {
-	tfile, err := os.OpenFile(rdFile, os.O_RDWR, 0700)
-	if err != nil {
-		return err, 0
-	}
-	defer tfile.Close()
-	return readFilePosion(tfile)
+	return ret, nil
 }
 func (wk *DWorker) downloadNoRange(url string, fileName string) error {
 	//set full path
@@ -140,11 +157,48 @@ func (wk *DWorker) downloadNoRange(url string, fileName string) error {
 		return err
 	}
 	defer df.Close()
-
-	_, err = io.Copy(df, resp.Body)
-	return err
+	var len int
+	buffer := make([]byte, 1024)
+	for {
+		if wk.TaskCtl != nil {
+			select {
+			case <-wk.TaskCtl.Cancel.Done():
+				wk.Status = 2
+				return nil
+			default:
+			}
+		}
+		len, err = resp.Body.Read(buffer)
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			} else {
+				return err
+			}
+		} else {
+			_, err = df.Write(buffer[:len])
+			if err != nil {
+				return err
+			}
+		}
+	}
+}
+func (wk *DWorker) doDownload4NoRange(url string, fileName string) error {
+	err := wk.downloadNoRange(url, fileName)
+	if err != nil {
+		wk.Error = err
+		wk.Status = 3
+		return err
+	}
+	if wk.Status == 1 {
+		wk.Status = 4
+	}
+	return nil
 }
 func (wk *DWorker) Download(url string) error {
+	if wk.dm != nil {
+		defer wk.dm.DispatchNotify(wk.WorkerID)
+	}
 	if wk.HTTPCli == nil {
 		return errors.New("pls http client for this worker")
 	}
@@ -154,11 +208,15 @@ func (wk *DWorker) Download(url string) error {
 	wk.cancelFlag = false
 	wk.WorkStatus = fmt.Sprintf("downloading id = %d for %s\n", wk.WorkerID, url)
 
+	fmt.Println("url = > ", url)
 	fileName, fileSize, isRange, err := wk.GetDownloadFileInfo(url, "")
+	fmt.Println("fn", fileName, " val = ", isRange)
 	if !isRange {
-		return wk.downloadNoRange(url, fileName)
+		return wk.doDownload4NoRange(url, fileName)
 	}
 	if err != nil {
+		wk.Error = err
+		wk.Status = 3
 		return err
 	}
 	//set full path
@@ -180,11 +238,11 @@ func (wk *DWorker) Download(url string) error {
 		if err != nil {
 			return err
 		}
-		err, curPosion = readFilePosion(tfile)
+		curPosion, err = readFilePosion(tfile)
 		if err != nil {
 			return err
 		}
-		log.Println(fmt.Sprintf("downloaded %d bytes (%s) for %s", curPosion, ViewHumanShow(curPosion), fileName))
+		fmt.Printf("downloaded %d bytes (%s) for %s", curPosion, ViewHumanShow(curPosion), fileName)
 	} else if PathExists(fileName) && (!PathExists(rdFile)) {
 		//TODO nothing
 		log.Println("nothing for " + fileName)
@@ -210,7 +268,8 @@ func (wk *DWorker) Download(url string) error {
 			return err
 		}
 	}
-	cnt := 0
+	cnt := 1
+	maxTryCount := 10
 	wk.CurDownload.URL = url
 	wk.CurDownload.FileName = fileName
 	wk.CurDownload.CurPosition = curPosion
@@ -218,41 +277,37 @@ func (wk *DWorker) Download(url string) error {
 	log.Println("start ==>", url)
 	log.Println("File name ==>", fileName)
 	for {
-		err = wk.goonDownloadFile(url, curPosion, fileSize, dfile, tfile)
+		err = wk.execResumableDownload(url, curPosion, fileSize, dfile, tfile)
 		if err == nil && wk.cancelFlag {
-			wk.cancelFlag = false
+			finish = false
+			wk.Status = 2
 			break
 		}
 
-		if wk.suspendFlag {
-			for {
-				if wk.suspendFlag {
-					time.Sleep(1000 * time.Millisecond)
-					wk.WorkStatus = fmt.Sprintf(" suspend on id = %d for %s", wk.WorkerID, url)
-					log.Println("loop on suspend")
-				} else {
-					wk.WorkStatus = fmt.Sprintf("downloading id = %d for %s", wk.WorkerID, url)
-					err = errors.New("suspend error")
-					break
-				}
-			}
-			log.Println("go on downloading url = ", url)
-		}
 		if err == nil {
 			finish = true
+			wk.Status = 4
 			break
 		}
-		cnt++
 		log.Println("a error = ", err, " start new http connect....,try again ", cnt)
-		err, curPosion = readFilePosion(tfile)
+		realCurPosion, err := readFilePosion(tfile)
 		if err != nil {
 			log.Println("read position to failed,finish this task")
 			return err
 		}
-		time.Sleep(time.Second * time.Duration(cnt))
-		if cnt >= 10 {
-			cnt = 0
+		if realCurPosion > curPosion {
+			cnt = 1
+		} else {
+			//No new data was downloaded, indicating consecutive error.
+			cnt++
+			if cnt >= maxTryCount {
+				wk.Error = err
+				wk.Status = 3
+				break
+			}
 		}
+		curPosion = realCurPosion
+		time.Sleep(time.Second * time.Duration(cnt))
 		log.Println("reset position ", curPosion, " start new http connct...")
 	}
 	//release resource
@@ -262,30 +317,31 @@ func (wk *DWorker) Download(url string) error {
 	//remove position file
 	if finish {
 		os.Remove(rdFile)
+		log.Println("done ==>", fileName)
 	}
-	log.Println("done ==>", fileName)
 	return nil
 }
 func (wk *DWorker) addAutoHTTPHeader(header map[string]string) {
 	if wk.AuthSve != nil {
 		authHTTPHeader := wk.AuthSve.GetTokenHeader()
-		if authHTTPHeader != nil {
-			for k, v := range authHTTPHeader {
-				header[k] = v
-			}
+		for k, v := range authHTTPHeader {
+			header[k] = v
 		}
 	}
 }
 func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (string, int64, bool, error) {
-	//RANGE: bytes=100000-
+	//RANGE: bytes=0-1
+
 	header := map[string]string{}
 	header["RANGE"] = "bytes=0-1"
-	//wk.addAutoHTTPHeader(header)
+	header["Accept"] = "*/*"
+
 	resp, err := wk.HTTPCli.HttpGet(uurl, header, nil)
 	if err != nil {
 		return "", 0, false, err
 	}
 	defer resp.Body.Close()
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "", 0, false, fmt.Errorf("status code error : %d", resp.StatusCode)
 	}
@@ -295,23 +351,28 @@ func (wk *DWorker) GetDownloadFileInfo(uurl string, fileName string) (string, in
 	if strConRge == "" {
 		return realName, 0, false, nil
 	}
-	err, fileSize := parseRangeCookie(strConRge)
+	fileSize, err := parseRangeCookie(strConRge)
 	log.Println("response header ", strConRge, " fileSize = ", ViewHumanShow(fileSize))
 	if err != nil {
 		return "", 0, true, err
 	}
 	return realName, fileSize, true, nil
 }
-func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64, dfile *os.File, tfile *os.File) error {
+func (wk *DWorker) execResumableDownload(durl string, position int64, fileSize int64, dfile *os.File, tfile *os.File) error {
 	rangeHeader := fmt.Sprintf("bytes=%d-", position)
 	log.Println("header range :", rangeHeader)
 	header := map[string]string{}
 	header["RANGE"] = rangeHeader
+	//Remove authentication information from the request headers,
+	//as it is already included in the URL,
+	//to resolve the 401 error for OneDrive personal accounts
+
 	//wk.addAutoHTTPHeader(header)
-	resp, err := wk.HTTPCli.HttpGet(uurl, header, nil)
+	resp, err := wk.HTTPCli.HttpGet(durl, header, nil)
 	if err != nil {
-		return errors.New(fmt.Sprint("download ", uurl, " failed", err))
+		return errors.New(fmt.Sprint("download ", durl, " failed", err))
 	}
+	//Release HTTP resources
 	defer resp.Body.Close()
 	strConRge := resp.Header.Get("Content-Range")
 	if strConRge == "" {
@@ -330,43 +391,59 @@ func (wk *DWorker) goonDownloadFile(uurl string, position int64, fileSize int64,
 	buff := make([]byte, 102400)
 	//1M 1k*1024
 	readCnt := 0
-	t0 := time.Now()
+	wk.CurDownload.LastUpdatedTime = time.Now()
 	for {
+		if wk.TaskCtl != nil {
+			select {
+			case <-wk.TaskCtl.Cancel.Done():
+				fmt.Println("download task exiting...")
+				wk.cancelFlag = true
+				return nil
+			default:
+			}
+		}
 		count, err := resp.Body.Read(buff)
 		if err != nil && err != io.EOF {
+			//An I/O error occurred from http server
 			return err
 		}
 		position = position + int64(count)
-		if err == io.EOF {
-			log.Println("pv & tatol ", position, " & ", fileSize)
-		}
-		_, err = dfile.Write(buff[0:count])
-		if err != nil {
-			return err
-		}
-		if position == fileSize {
-			break
-		}
-		if wk.cancelFlag || wk.suspendFlag {
-			break
-		}
-		readCnt++
-		if readCnt > 512 {
-			err = recordFilePosion(tfile, position)
-			if err != nil {
-				log.Println("write postion to failed, err = ", err)
-			}
-			t1 := time.Now()
-			dis := t1.Sub(t0)
-			addData := position - wk.CurDownload.CurPosition
-			v := addData / dis.Milliseconds() * 1000
 
-			slog := fmt.Sprintf("download rate = %s/s,finish %s %s", ViewHumanShow(v), ViewHumanShow(position), ViewPercent(position, fileSize))
-			wk.CurDownload.CurPosition = position
-			wk.CurDownload.Desc = slog
-			log.Println(slog)
+		_, wriErr := dfile.Write(buff[0:count])
+		if wriErr != nil {
+			//An I/O error occurred for save data to local file.
+			return wriErr
+		}
+		if err == io.EOF || position >= fileSize {
+			if position == fileSize {
+				log.Println("Finish file download. File size ", fileSize)
+			} else {
+				log.Printf("The downloaded file size(%d) does not match the actual size(%d)\n", position, fileSize)
+			}
+			break
+		}
+
+		readCnt++
+		if readCnt > 5 {
+			t1 := time.Now()
+			dis := t1.Sub(wk.CurDownload.LastUpdatedTime)
 			readCnt = 0
-			t0 = t1
+			if dis.Seconds() >= 1 {
+				err = recordFilePosion(tfile, position)
+				if err != nil {
+					log.Println("write postion to failed, err = ", err)
+				}
+				//dis := t1.Sub(t0)
+				addData := position - wk.CurDownload.CurPosition
+				v := addData / dis.Milliseconds() * 1000
+
+				slog := fmt.Sprintf("download rate = %s/s,finish %s %s $ in %f s", ViewHumanShow(v), ViewHumanShow(position), ViewPercent(position, fileSize), dis.Seconds())
+				wk.CurDownload.CurPosition = position
+				wk.CurDownload.Desc = slog
+				wk.CurDownload.Rate = v
+				wk.CurDownload.LastUpdatedTime = t1
+				log.Println(slog)
+			}
 		}
 	}
 	return nil
@@ -377,39 +454,6 @@ func NewDWorker() *DWorker {
 	wk := new(DWorker)
 	wk.CurDownload = new(DownloadInfo)
 	return wk
-}
-
-func webdavGetFileCotent(cli *chttp.HttpClient, buff *bytes.Buffer, uurl string, position int64, fileSize int64) (int64, error) {
-	fmt.Println("fileSize :", fileSize)
-	maxNeedLen := fileSize - position
-	needLen := int64(buff.Cap() - buff.Len())
-	if needLen > maxNeedLen {
-		needLen = maxNeedLen
-	}
-
-	rangeHeader := fmt.Sprintf("bytes=%d-%d", position, position+needLen-1)
-	fmt.Println("header range :", rangeHeader)
-	header := map[string]string{}
-	header["RANGE"] = rangeHeader
-	resp, err := cli.HttpGet(uurl, header, nil)
-	if err != nil {
-		return 0, errors.New(fmt.Sprint("download ", uurl, " failed", err))
-	}
-	defer resp.Body.Close()
-	strConRge := resp.Header.Get("Content-Range")
-	if strConRge == "" {
-		return 0, errors.New("no support range")
-	}
-	sc := resp.StatusCode / 100
-	if sc != 2 {
-		return 0, errors.New("request errors,status code = " + strconv.Itoa(sc) + "," + resp.Status)
-	}
-	fmt.Println("response header range :", strConRge)
-	fmt.Println("seed to :", position)
-	//1M 1k*1024
-	count, err := io.CopyN(buff, resp.Body, needLen)
-	fmt.Println("read to buff :", count)
-	return count, err
 }
 
 func webdavGetFileFromPosition(cli *chttp.HttpClient, uurl string, position int64, fileSize int64) (io.ReadCloser, error) {
@@ -434,4 +478,193 @@ func webdavGetFileFromPosition(cli *chttp.HttpClient, uurl string, position int6
 	fmt.Println("seed to :", position)
 	//1M 1k*1024
 	return resp.Body, nil
+}
+
+func (cli *OneClient) BatchDownload(curDir string, descDir string, a bool) {
+	fileList, err := cli.APIListFilesByPath(cli.CurDriveID, curDir)
+	if err != nil {
+		fmt.Println("error in loop dir,err = ", err)
+		return
+	}
+	for _, f := range fileList.Value {
+		if f.Folder != nil {
+			cli.BatchDownload(filepath.Join(curDir, f.Name), filepath.Join(descDir, f.Name), a)
+			continue
+		}
+		path := filepath.Join(curDir, f.Name)
+		fmt.Println("donwloading  ", path)
+		err = os.MkdirAll(descDir, 0771)
+		if err != nil {
+			fmt.Println("create dir to failed ", err)
+			break
+		}
+		localFilePath := filepath.Join(descDir, f.Name)
+		localFilePathTmp := filepath.Join(descDir, f.Name+".finfo")
+		if PathExists(localFilePath) && !PathExists(localFilePathTmp) {
+			fmt.Println("The file exists,skip it : ", localFilePath)
+			continue
+		}
+		cli.Download(path, descDir, a)
+	}
+}
+
+func NewDM() *DownloadManager {
+	dm := new(DownloadManager)
+	dm.rootContext = context.Background()
+	dm.startID = 0
+	dm.taskQueue = make(chan *DWorker, 1024)
+	dm.closeFlag = make(chan int)
+	dm.dispatchQueue = make(chan int, 20)
+	dm.data = map[string]*DWorker{}
+
+	dm.max = 4
+	return dm
+}
+
+func (dm *DownloadManager) AddTask(httpCli *chttp.HttpClient, durl string, downloadDir string, a bool) {
+	wk := NewDWorker()
+	wk.HTTPCli = httpCli
+	wk.DownloadDir = downloadDir
+	wk.Proxy = a
+
+	wk.CurDownload.URL = durl
+	dm.taskQueue <- wk
+}
+
+func (dm *DownloadManager) GetAllTask() []*DWorker {
+	li := []*DWorker{}
+	dm.dataLock.RLock()
+	for _, t := range dm.data {
+		li = append(li, t)
+	}
+	dm.dataLock.RUnlock()
+	return li
+}
+
+func (dm *DownloadManager) CandelTask(id int) {
+	var task *DWorker = nil
+	dm.dataLock.RLock()
+	for _, t := range dm.data {
+		if t.WorkerID == id {
+			task = t
+			break
+		}
+	}
+	dm.dataLock.RUnlock()
+
+	//TODO task lock
+	if task != nil {
+		if task.Status == 0 {
+			task.Status = 2
+		} else if task.Status == 1 {
+			//running
+			task.TaskCtl.CancelFn()
+		}
+	}
+	dm.DispatchNotify(-1)
+}
+
+func (dm *DownloadManager) RestartTask(id int) {
+	var task *DWorker = nil
+	dm.dataLock.RLock()
+	for _, t := range dm.data {
+		if t.WorkerID == id {
+			task = t
+			break
+		}
+	}
+	dm.dataLock.RUnlock()
+
+	//TODO task lock
+	if task != nil {
+		if task.Status == 2 {
+			c, fn := context.WithCancel(dm.rootContext)
+			task.TaskCtl.Cancel = c
+			task.TaskCtl.CancelFn = fn
+			task.Status = 0
+		}
+	}
+	dm.DispatchNotify(-1)
+}
+
+func (dm *DownloadManager) Close() {
+	dm.closeFlag <- 0
+}
+
+func (dm *DownloadManager) DispatchNotify(id int) {
+	dm.dispatchQueue <- id
+}
+func (dm *DownloadManager) release(flag int) {
+	fmt.Println("close DM ...")
+	if flag > 0 {
+		dm.dataLock.RLock()
+		for _, t := range dm.data {
+			if t.Status == 1 {
+				t.TaskCtl.CancelFn()
+			}
+		}
+		dm.dataLock.RUnlock()
+	}
+}
+
+func (dm *DownloadManager) addTask2Datamap(task *DWorker) {
+	fmt.Println("add task", task)
+	dm.startID++
+	task.WorkerID = dm.startID
+	c, fn := context.WithCancel(dm.rootContext)
+	task.TaskCtl = new(ThreadControl)
+	task.TaskCtl.Cancel = c
+	task.TaskCtl.CancelFn = fn
+	task.dm = dm
+
+	dm.dataLock.Lock()
+	dm.data[task.CurDownload.URL] = task
+	dm.dataLock.Unlock()
+}
+
+func (dm *DownloadManager) getNextTask() *DWorker {
+	if len(dm.data) == 0 {
+		return nil
+	}
+	for _, t := range dm.data {
+		if t.Status == 0 {
+			return t
+		}
+	}
+	return nil
+}
+
+// workerID is finished ID of task
+func (dm *DownloadManager) dispatch(workerID int) {
+	if workerID > -1 {
+		fmt.Println("task over =>", workerID)
+		dm.activeCnt--
+	}
+	if dm.activeCnt < dm.max {
+		task := dm.getNextTask()
+		if task == nil {
+			fmt.Println("no waitting download task")
+			return
+		}
+		task.Status = 1
+		go task.Download(task.CurDownload.URL)
+		dm.activeCnt++
+	} else {
+		fmt.Println("no free worker thread")
+	}
+}
+
+func (dm *DownloadManager) Start() {
+	for {
+		select {
+		case task := <-dm.taskQueue:
+			dm.addTask2Datamap(task)
+			dm.dispatch(-1)
+		case val := <-dm.closeFlag:
+			dm.release(val)
+			return
+		case workID := <-dm.dispatchQueue:
+			dm.dispatch(workID)
+		}
+	}
 }

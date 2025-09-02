@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -14,103 +12,6 @@ import (
 	"github.com/milin2436/oneshow/one"
 )
 
-//OneTask a task for thread
-type OneTask struct {
-	Path string
-	Cli  *one.OneClient
-	Desc string
-	ID   int
-}
-
-var taskQueue chan *OneTask
-var exitQueue chan int
-
-//worker thread count
-var threadCnt = 4
-
-func taskWorker(goid int, cli *one.OneClient) {
-	for {
-		msg, ok := <-taskQueue
-		if ok {
-			fmt.Println("upload file = ", msg.Path)
-			descFile, err := cli.APIGetFile(cli.CurDriveID, msg.Desc)
-			if err == nil && descFile != nil {
-				fmt.Println("file existed in onedrive,file = ", msg.Desc)
-				continue
-			}
-			tryLimit := 500
-			for ti := 1; ti <= tryLimit; ti++ {
-				err = msg.Cli.UploadBigFile(msg.Path, msg.Cli.CurDriveID, msg.Desc)
-				if err != nil {
-					fmt.Println("err = ", err, " in ", msg.Path)
-					fmt.Printf("try again for the %dth time\n", ti)
-					//exitQueue <- 0
-				} else {
-					fmt.Println("done file = ", msg.Path)
-					break
-				}
-			}
-		} else {
-			exitQueue <- goid
-			fmt.Println("will close go thread ,ID = ", goid)
-			break
-		}
-	}
-}
-
-func batchUpload(cli *one.OneClient, curDir string, descDir string) {
-	fileList, err := ioutil.ReadDir(curDir)
-	if err != nil {
-		fmt.Println("error in loop dir,err = ", err)
-		return
-	}
-	//taskCnt := 0
-	for _, f := range fileList {
-		info := f
-		if f.IsDir() {
-			batchUpload(cli, filepath.Join(curDir, info.Name()), filepath.Join(descDir, info.Name()))
-			continue
-		}
-		path := filepath.Join(curDir, info.Name())
-		if strings.HasSuffix(info.Name(), ".one.tmp") {
-			fmt.Println("skip ", path)
-			continue
-		}
-		msg := new(OneTask)
-		msg.Path = path
-		msg.Desc = filepath.Join(descDir, info.Name())
-		msg.Cli = cli
-		//add upload task to queue
-		taskQueue <- msg
-	}
-}
-func batchDownload(cli *one.OneClient, curDir string, descDir string, a bool) {
-	fileList, err := cli.APIListFilesByPath(cli.CurDriveID, curDir)
-	if err != nil {
-		fmt.Println("error in loop dir,err = ", err)
-		return
-	}
-	for _, f := range fileList.Value {
-		if f.Folder != nil {
-			batchDownload(cli, filepath.Join(curDir, f.Name), filepath.Join(descDir, f.Name), a)
-			continue
-		}
-		path := filepath.Join(curDir, f.Name)
-		fmt.Println("donwloading  ", path)
-		err = os.MkdirAll(descDir, 0771)
-		if err != nil {
-			fmt.Println("create dir to failed ", err)
-			break
-		}
-		localFilePath := filepath.Join(descDir, f.Name)
-		localFilePathTmp := filepath.Join(descDir, f.Name+".finfo")
-		if one.PathExists(localFilePath) && !one.PathExists(localFilePathTmp) {
-			fmt.Println("The file exists,skip it : ", localFilePath)
-			continue
-		}
-		cli.Download(path, descDir, a)
-	}
-}
 func Download(cli *one.OneClient, downloadDir string, dirPath string, a bool) {
 	dirPath = one.GetOnedrivePath(dirPath)
 	info, err := cli.APIGetFile(cli.CurDriveID, dirPath)
@@ -120,7 +21,7 @@ func Download(cli *one.OneClient, downloadDir string, dirPath string, a bool) {
 	}
 	go AutoUpdateToken(cli)
 	if info.Folder != nil {
-		batchDownload(cli, dirPath, downloadDir, a)
+		cli.BatchDownload(dirPath, downloadDir, a)
 	} else {
 		cli.Download(dirPath, downloadDir, a)
 	}
@@ -481,6 +382,7 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("file does not exit  : ", srcFile.Value)
 			return
 		}
+		var threadCnt = 4
 		if fileInfo.IsDir() {
 			tSize := ct.ParamGroupMap["t"]
 			if tSize != nil {
@@ -489,22 +391,10 @@ func setFuns(ct *cmd.Context) {
 					threadCnt = 4
 				}
 			}
-			taskQueue = make(chan *OneTask, 5)
-			exitQueue = make(chan int)
-			for i := 0; i < threadCnt; i++ {
-				go taskWorker(i, cli)
-			}
-			batchUpload(cli, srcFile.Value, fn.Value)
-			close(taskQueue)
-			for j := 0; j < threadCnt; j++ {
-				goid := <-exitQueue
-				fmt.Println("got closed thread. goid = ", goid)
-			}
+			cli.BatchUpload(threadCnt, srcFile.Value, fn.Value)
 			fmt.Println("done all.")
 		} else {
-
 			cli.UploadSourceTryAgain(srcFile.Value, cli.CurDriveID, fn.Value, 100)
-
 		}
 	}
 	pro = new(cmd.Program)
@@ -515,20 +405,20 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["s"] = &cmd.ParamDef{
-		"s",
-		"https",
-		false,
-		"enable https service ,need cacert.pem ,privkey.pem on current dir"}
+		Name:      "s",
+		LongName:  "https",
+		NeedValue: false,
+		Desc:      "enable https service ,need cacert.pem ,privkey.pem on current dir"}
 	pro.ParamDefMap["u"] = &cmd.ParamDef{
-		"u",
-		"url",
-		true,
-		"setup service address for this service,as -u :5555"}
+		Name:      "u",
+		LongName:  "url",
+		NeedValue: true,
+		Desc:      "setup service address for this service,as -u :5555"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -546,50 +436,50 @@ func setFuns(ct *cmd.Context) {
 		if ct.ParamGroupMap["s"] != nil {
 			https = true
 		}
-		Serivce(address, https)
+		StartWebSerivce(address, https)
 	}
 	pro = new(cmd.Program)
 	//#webdav
 	pro.Name = "webdav"
-	pro.Desc = "run webdav service for onedirve (only read)(beta version)"
+	pro.Desc = "run webdav service for onedirve (only read)"
 	pro.Usage = "usage: " + pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["u"] = &cmd.ParamDef{
-		"u",
-		"url",
-		true,
-		"setup listen address for this service,as -u :5555"}
+		Name:      "u",
+		LongName:  "url",
+		NeedValue: true,
+		Desc:      "setup listen address for this service,as -u :5555"}
 	pro.ParamDefMap["user"] = &cmd.ParamDef{
-		"user",
-		"user",
-		true,
-		"setup webdav user"}
+		Name:      "user",
+		LongName:  "user",
+		NeedValue: true,
+		Desc:      "setup webdav user"}
 	pro.ParamDefMap["passwd"] = &cmd.ParamDef{
-		"passwd",
-		"password",
-		true,
-		"setup webdav password"}
+		Name:      "passwd",
+		LongName:  "password",
+		NeedValue: true,
+		Desc:      "setup webdav password"}
 	pro.ParamDefMap["c"] = &cmd.ParamDef{
-		"c",
-		"cert",
-		true,
-		"setup https cert file"}
+		Name:      "c",
+		LongName:  "cert",
+		NeedValue: true,
+		Desc:      "setup https cert file"}
 	pro.ParamDefMap["k"] = &cmd.ParamDef{
-		"k",
-		"key",
-		true,
-		"setup webdav key file"}
+		Name:      "k",
+		LongName:  "key",
+		NeedValue: true,
+		Desc:      "setup webdav key file"}
 	pro.ParamDefMap["ss"] = &cmd.ParamDef{
-		"ss",
-		"serverlist",
-		true,
-		"server list as 0all;all1"}
+		Name:      "ss",
+		LongName:  "serverlist",
+		NeedValue: true,
+		Desc:      "server list as 0all;all1"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
@@ -627,8 +517,8 @@ func setFuns(ct *cmd.Context) {
 		if ssp != nil {
 			ss = ssp.Value
 		}
-		fmt.Println("sss = ", ss)
-		Webdav(address, user, passwd, cert, key, ss)
+		fmt.Println("sources : ", ss)
+		StartWebdavService(address, user, passwd, cert, key, ss)
 	}
 	pro = new(cmd.Program)
 	//#users
@@ -638,17 +528,18 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
 			cmd.PrintCmdHelp(pro)
 			return
 		}
-		li, err := ListUsers()
+		cm := new(one.ConfigManager)
+		li, err := cm.ListUsers()
 		if err != nil {
 			fmt.Println("err = ", err)
 			return
@@ -670,10 +561,10 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -686,7 +577,8 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("user name cannot be empty")
 			return
 		}
-		err := SwitchUser(user)
+		cm := new(one.ConfigManager)
+		err := cm.SwitchUser(user)
 		if err != nil {
 			fmt.Println("err = ", err)
 		} else {
@@ -702,10 +594,10 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -718,7 +610,8 @@ func setFuns(ct *cmd.Context) {
 			fmt.Println("user name cannot be empty")
 			return
 		}
-		err := SaveUser(user)
+		cm := new(one.ConfigManager)
+		err := cm.SaveUser(user)
 		if err != nil {
 			fmt.Println("err = ", err)
 		} else {
@@ -733,10 +626,10 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -744,7 +637,8 @@ func setFuns(ct *cmd.Context) {
 			cmd.PrintCmdHelp(pro)
 			return
 		}
-		userName, err := Who()
+		cm := new(one.ConfigManager)
+		userName, err := cm.Who()
 		if err != nil {
 			fmt.Println("who command call failed, err = ", err)
 		} else {
@@ -761,20 +655,20 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["d"] = &cmd.ParamDef{
-		"d",
-		"detail",
-		false,
-		"show full path of file"}
+		Name:      "d",
+		LongName:  "detail",
+		NeedValue: false,
+		Desc:      "show full path of file"}
 	pro.ParamDefMap["dn"] = &cmd.ParamDef{
-		"dn",
-		"download",
-		false,
-		"download file for search result,default save files to search-dn directory,and depend -d flag"}
+		Name:      "dn",
+		LongName:  "download",
+		NeedValue: false,
+		Desc:      "download file for search result,default save files to search-dn directory,and depend -d flag"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -849,21 +743,21 @@ func setFuns(ct *cmd.Context) {
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
-		"h",
-		"help",
-		false,
-		"print help"}
+		Name:      "h",
+		LongName:  "help",
+		NeedValue: false,
+		Desc:      "print help"}
 	pro.ParamDefMap["f"] = &cmd.ParamDef{
-		"f",
-		"file",
-		true,
-		"will move file"}
+		Name:      "f",
+		LongName:  "file",
+		NeedValue: true,
+		Desc:      "will move file"}
 
 	pro.ParamDefMap["n"] = &cmd.ParamDef{
-		"n",
-		"newName",
-		true,
-		"new name"}
+		Name:      "n",
+		LongName:  "newName",
+		NeedValue: true,
+		Desc:      "new name"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -919,7 +813,13 @@ func setFuns(ct *cmd.Context) {
 	}
 }
 func main() {
-	core.Debug = false
+	isDebug := os.Getenv("oneshowdebug")
+	isDebug = strings.TrimSpace(isDebug)
+	if isDebug == "true" {
+		core.Debug = true
+	} else {
+		core.Debug = false
+	}
 	one.InitOneShowConfig()
 	ct := cmd.NewContext()
 	setFuns(ct)

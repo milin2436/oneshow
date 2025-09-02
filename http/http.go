@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"net"
 	"net/http"
@@ -87,7 +86,7 @@ func HandleRespon2String(resp *http.Response, err error) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	buff, err := ioutil.ReadAll(resp.Body)
+	buff, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

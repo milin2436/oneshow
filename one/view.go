@@ -3,9 +3,10 @@ package one
 import (
 	"bytes"
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
-	"net/url"
+	"unicode/utf8"
 )
 
 func ViewHumanShow(isize int64) string {
@@ -102,4 +103,30 @@ func URLPathEscape(in string) string {
 	var u url.URL
 	u.Path = in
 	return u.String()
+}
+
+// Abbreviate function shortens the input string to the specified length
+// while keeping as many characters from the start and end as possible.
+func Abbreviate(s string, length int) string {
+	if utf8.RuneCountInString(s) <= length {
+		return s
+	}
+
+	if length <= 3 {
+		// If the target length is too small to fit any characters plus "...", return just "..."
+		return "..."
+	}
+
+	// Calculate the number of characters to keep from the start and end
+	halfLen := (length - 3) / 2
+	runes := []rune(s)
+	start := runes[:halfLen]
+	end := runes[len(runes)-halfLen:]
+
+	// If length is odd, we need one extra character at the start
+	if (length-3)%2 != 0 {
+		start = append(start, runes[halfLen])
+	}
+
+	return fmt.Sprintf("%s...%s", string(start), string(end))
 }

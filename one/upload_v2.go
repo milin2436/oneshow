@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -287,7 +286,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 	uploadURL := ""
 	if err == nil && !infoTmp.IsDir() {
 		//continue upload
-		text, err := ioutil.ReadFile(fileInfo)
+		text, err := os.ReadFile(fileInfo)
 		if err != nil {
 			return err
 		}
@@ -309,7 +308,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 			return err
 		}
 		uploadURL = ret.UploadURL
-		ioutil.WriteFile(fileInfo, []byte(uploadURL), 0661)
+		os.WriteFile(fileInfo, []byte(uploadURL), 0661)
 	}
 	err = task.Open()
 	if err != nil {

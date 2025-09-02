@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +26,9 @@ const OneshowConfigFile string = ".oneshow.json"
 
 //OneshowConfig load .oneshow.json config file
 var OneshowConfig *OneShowConfig
+
+type ConfigManager struct {
+}
 
 //GetConfigDir app config dir
 func GetConfigDir() string {
@@ -49,7 +52,7 @@ func getCurUser() string {
 		user = envUser
 		fmt.Println("user envUser :", user)
 	} else {
-		buff, err := ioutil.ReadFile(filepath.Join(home, CurUser))
+		buff, err := os.ReadFile(filepath.Join(home, CurUser))
 		if err != nil {
 			user = ""
 		} else {
@@ -71,7 +74,7 @@ func (u *OneClient) setUserInfo(name string) {
 }
 func (u *OneClient) findConfigFile() (string, error) {
 	home := GetConfigDir()
-	buff, err := ioutil.ReadFile(filepath.Join(home, u.ConfigFile))
+	buff, err := os.ReadFile(filepath.Join(home, u.ConfigFile))
 	if err != nil {
 		return "", err
 	}
@@ -85,7 +88,7 @@ func InitOneShowConfig() {
 	home := GetConfigDir()
 	if home != "" {
 		fullPath := filepath.Join(home, OneshowConfigFile)
-		buff, err := ioutil.ReadFile(fullPath)
+		buff, err := os.ReadFile(fullPath)
 		if err != nil {
 			return
 		}
@@ -116,13 +119,13 @@ func setupOneShowConfig() {
 func (u *OneClient) getConfigAuthToken() *AuthToken {
 	//HOME USER PWD SHELL
 	cfg := new(AuthToken)
-	content, err := u.findConfigFile()
+	content, _ := u.findConfigFile()
 	//fmt.Println(content)
 	if content == "" {
 		fmt.Println("can not find config file")
 		return nil
 	}
-	err = json.Unmarshal([]byte(content), cfg)
+	err := json.Unmarshal([]byte(content), cfg)
 	if err != nil {
 		fmt.Println("err = ", err)
 		return nil
@@ -160,5 +163,68 @@ func SaveToken2Config(token *AuthToken, configFile string) error {
 	if err != nil {
 		return err
 	}
-	return ioutil.WriteFile(configFile, buff, 0660)
+	return os.WriteFile(configFile, buff, 0660)
+}
+
+const configFile string = ConfigFileDefault
+const configUserFile string = configFile + "."
+
+func (cm *ConfigManager) ListUsers() ([]string, error) {
+	home := GetConfigDir()
+	return cm.loopDir(home)
+}
+func (cm *ConfigManager) SaveUser(user string) error {
+	home := GetConfigDir()
+	userDec := filepath.Join(home, configUserFile+user)
+	userSrc := filepath.Join(home, configFile)
+	return cm.copyUser(userSrc, userDec)
+}
+func (cm *ConfigManager) SwitchUser(user string) error {
+	home := GetConfigDir()
+
+	userDecFilepath := filepath.Join(home, configUserFile+user)
+	if core.ExistFile(userDecFilepath) {
+		decFile := filepath.Join(home, CurUser)
+		return os.WriteFile(decFile, []byte(user), 0660)
+	}
+	return fmt.Errorf("the configuration file for the %s user does not exist", user)
+}
+func (cm *ConfigManager) copyUser(userSrc string, userDec string) error {
+	src, err := os.Open(userSrc)
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	curFile, err := os.OpenFile(userDec, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0660)
+	if err != nil {
+		return err
+	}
+	defer curFile.Close()
+	_, err = io.Copy(curFile, src)
+	return err
+}
+func (cm *ConfigManager) Who() (string, error) {
+	home := GetConfigDir()
+	decFile := filepath.Join(home, CurUser)
+	buff, err := os.ReadFile(decFile)
+	return string(buff), err
+}
+func (cm *ConfigManager) loopDir(dirName string) ([]string, error) {
+	li := []string{}
+	fileList, err := os.ReadDir(dirName)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range fileList {
+		info := f
+		if f.IsDir() {
+			continue
+		}
+		path := filepath.Join(dirName, info.Name())
+		lname := strings.ToLower(info.Name())
+		if strings.HasPrefix(lname, configUserFile) {
+			li = append(li, path)
+		}
+	}
+	return li, nil
 }

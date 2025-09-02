@@ -3,37 +3,21 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/milin2436/oneshow/one"
+	"github.com/milin2436/oneshow/one/utils"
 	"golang.org/x/net/webdav"
 )
 
 func AutoUpdateToken(cli *one.OneClient) {
 	for {
-		CheckToken(cli)
+		cli.VerifyAndUpdateForToken()
 		time.Sleep(time.Minute)
 	}
 }
-func CheckToken(cli *one.OneClient) error {
-	expires := time.Time(cli.Token.ExpiresTime)
-
-	expires = expires.Truncate(time.Minute)
-	if time.Now().After(expires) {
-		//fmt.Println("to expries time, update token")
-		newToken, err := cli.UpdateToken()
-		if err != nil {
-			return err
-		}
-		cli.Token = newToken
-	}
-	return nil
-
-}
-
 func OutHtml(body string) string {
 	html := `
 	<html>
@@ -74,54 +58,15 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 	return buff.String()
 }
 
-func GetQueryParamByKey(r *http.Request, key string) string {
-
-	keys, ok := r.URL.Query()[key]
-	if !ok || len(keys[0]) < 1 {
-		return ""
-	}
-
-	return keys[0]
-}
-func Serivce(address string, https bool) {
+func StartWebSerivce(address string, https bool) {
 	var err1 error
 	cli, err1 := one.NewOneClient()
 	if err1 != nil {
 		panic(err1.Error())
 	}
 
-	http.HandleFunc("/fetch", func(w http.ResponseWriter, r *http.Request) {
-		fetchURL := GetQueryParamByKey(r, "url")
-		method := GetQueryParamByKey(r, "method")
-		if method == "" {
-			method = "GET"
-		}
-		if fetchURL == "" {
-			w.Write([]byte("fetch method : url can not be empty."))
-			return
-		}
-		headers := map[string]string{}
-		for k, v := range r.Header {
-			headers[k] = v[0]
-		}
-		fetchResp, err := cli.HTTPClient.HttpRequest(method, fetchURL, headers, "")
-		if err != nil {
-			w.Write([]byte(err.Error()))
-			return
-		}
-		//respose line
-		w.WriteHeader(fetchResp.StatusCode)
-
-		//header
-		for k, v := range fetchResp.Header {
-			w.Header().Add(k, v[0])
-		}
-		//body
-		_, err = io.Copy(w, fetchResp.Body)
-	})
-
 	http.HandleFunc("/vfs", func(w http.ResponseWriter, r *http.Request) {
-		dirPath := GetQueryParamByKey(r, "path")
+		dirPath := utils.GetQueryParamByKey(r, "path")
 		if dirPath == "" {
 			dirPath = "/"
 		}
@@ -129,7 +74,7 @@ func Serivce(address string, https bool) {
 		if strLen > 1 && dirPath[strLen-1] == '/' {
 			dirPath = dirPath[:strLen-1]
 		}
-		err := CheckToken(cli)
+		err := cli.VerifyAndUpdateForToken()
 		if err != nil {
 			w.Write([]byte(err.Error()))
 			return
@@ -139,7 +84,7 @@ func Serivce(address string, https bool) {
 		w.Write([]byte(html))
 	})
 	http.HandleFunc("/play", func(w http.ResponseWriter, r *http.Request) {
-		dirPath := GetQueryParamByKey(r, "id")
+		dirPath := utils.GetQueryParamByKey(r, "id")
 		bodyTmp := `
 		<video width="640" height="480" controls="controls">
 			<source src="%s" />
@@ -150,19 +95,31 @@ func Serivce(address string, https bool) {
 		w.Write([]byte(html))
 	})
 
+	dm := one.NewDM()
+	go dm.Start()
+	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
+		dirPath := utils.GetQueryParamByKey(r, "path")
+		err := cli.VerifyAndUpdateForToken()
+		if err != nil {
+			w.Write([]byte(err.Error()))
+		} else {
+			dm.AddTask(cli.HTTPClient, dirPath, "/home/super/mem", false)
+			w.Write([]byte(dirPath))
+		}
+	})
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("{\"error\":\"ok\"}"))
 	})
 	var err error
 	if https {
-		fmt.Println("https server on ", address)
+		fmt.Println("The HTTPS service on ", address)
 		err = http.ListenAndServeTLS(address, "cert.pem", "key.pem", nil)
 	} else {
-		fmt.Println("http server on ", address)
+		fmt.Println("The HTTP service on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
 	if err != nil {
-		fmt.Println("run http service to failed on error = ", err)
+		fmt.Println("The HTTP service failed to run on error = ", err)
 	}
 }
 
@@ -181,14 +138,14 @@ func genWebdavHandle(cli *one.OneClient) *webdav.Handler {
 	return wh
 
 }
-func Webdav(address string, user string, passwd string, cert string, key string, ss string) {
-	oneList := strings.Split(ss, ";")
+func StartWebdavService(address string, user string, passwd string, cert string, key string, oneDriveSourceList string) {
+	oneList := strings.Split(oneDriveSourceList, ";")
 	for _, oneUser := range oneList {
 		oneUser = strings.TrimSpace(oneUser)
 		if oneUser == "" {
 			continue
 		}
-		fmt.Printf("server %s on\n", oneUser)
+		fmt.Printf("webdav service %s will run\n", oneUser)
 		cli, err1 := one.NewOneClientUser(oneUser)
 		if err1 != nil {
 			panic(err1.Error())
@@ -215,13 +172,13 @@ func Webdav(address string, user string, passwd string, cert string, key string,
 	}
 	var err error
 	if cert != "" {
-		fmt.Println("webdavs server on ", address)
+		fmt.Println("The WEBDAVS on ", address)
 		err = http.ListenAndServeTLS(address, cert, key, nil)
 	} else {
-		fmt.Println("webdav server on ", address)
+		fmt.Println("The WEBDAV on ", address)
 		err = http.ListenAndServe(address, nil)
 	}
 	if err != nil {
-		fmt.Println("run webdav service to failed on error = ", err)
+		fmt.Println("The WEBDAV service failed to run on error = ", err)
 	}
 }

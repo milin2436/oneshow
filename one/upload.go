@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+
 	//"net/url"
 	"os"
 	"path/filepath"
@@ -49,7 +49,7 @@ func (cli *OneClient) APICreateUploadSession(driveID string, path string) (*Uplo
 
 	//rclone
 	path = URLPathEscape(path)
-	fmt.Println("sss=",path)
+	fmt.Println("sss=", path)
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
 	if path == "/" {
 		uri := "/drives/%s/root/createUploadSession"
@@ -189,7 +189,7 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 	uploadURL := ""
 	if err == nil && !infoTmp.IsDir() {
 		//continue upload
-		text, err := ioutil.ReadFile(fileInfo)
+		text, err := os.ReadFile(fileInfo)
 		if err != nil {
 			return err
 		}
@@ -211,7 +211,7 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 			return err
 		}
 		uploadURL = ret.UploadURL
-		ioutil.WriteFile(fileInfo, []byte(uploadURL), 0661)
+		os.WriteFile(fileInfo, []byte(uploadURL), 0661)
 	}
 	file, err := os.Open(srcFile)
 	if err != nil {
@@ -229,5 +229,66 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 		return err
 	}
 	os.Remove(fileInfo)
+	return nil
+}
+
+func (cli *OneClient) BatchUpload(threadSize int, curDir string, descDir string) {
+	tm := core.NewTaskManager()
+	tm.SetActiveWorkerMaxSize(threadSize)
+
+	cli.batchUpload1(tm, curDir, descDir)
+
+	tm.Wait4Completion()
+}
+func (cli *OneClient) batchUpload1(tm *core.TaskManager, curDir string, descDir string) {
+	fileList, err := os.ReadDir(curDir)
+	if err != nil {
+		fmt.Println("error in loop dir,err = ", err)
+		return
+	}
+	for _, f := range fileList {
+		info := f
+		if f.IsDir() {
+			cli.batchUpload1(tm, filepath.Join(curDir, info.Name()), filepath.Join(descDir, info.Name()))
+			continue
+		}
+		path := filepath.Join(curDir, info.Name())
+		if strings.HasSuffix(info.Name(), ".one.tmp") {
+			fmt.Println("skip ", path)
+			continue
+		}
+		bt := new(uploadTask)
+		bt.Path = path
+		bt.Desc = filepath.Join(descDir, info.Name())
+		bt.Cli = cli
+		tm.AddTask(bt)
+	}
+}
+
+type uploadTask struct {
+	core.BaseTask
+	Path string
+	Cli  *OneClient
+	Desc string
+}
+
+func (ut *uploadTask) Execute(w *core.Worker) error {
+	fmt.Println("upload file = ", ut.Path)
+	descFile, err := ut.Cli.APIGetFile(ut.Cli.CurDriveID, ut.Desc)
+	if err == nil && descFile != nil {
+		fmt.Println("file existed in onedrive,file = ", ut.Desc)
+		return err
+	}
+	tryLimit := 100
+	for ti := 1; ti <= tryLimit; ti++ {
+		err = ut.Cli.UploadBigFile(ut.Path, ut.Cli.CurDriveID, ut.Desc)
+		if err != nil {
+			fmt.Println("err = ", err, " in ", ut.Path)
+			fmt.Printf("try again for the %dth time\n", ti)
+		} else {
+			fmt.Println("done file = ", ut.Path)
+			break
+		}
+	}
 	return nil
 }

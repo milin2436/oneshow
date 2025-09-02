@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
-	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -38,17 +37,6 @@ type OneClient struct {
 	ConfigFile string
 	Token      *AuthToken
 	CurDriveID string
-}
-
-func setProxy4Client(HC *chttp.HttpClient) {
-	//export proxy=socks5://127.0.0.1:7744
-	proxy := os.Getenv("proxy")
-	if strings.Contains(proxy, "socks") {
-		HC.SetProxy(proxy)
-	}
-	if strings.Contains(proxy, "http") {
-		HC.SetProxy(proxy)
-	}
 }
 
 //NewDefaultCli new a default oneshow client
@@ -408,7 +396,7 @@ func HandleResponForParseToken(resp *http.Response, err error) (*AuthToken, erro
 	if err != nil {
 		return nil, err
 	}
-	buff, err := ioutil.ReadAll(resp.Body)
+	buff, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -440,7 +428,7 @@ func HandleResponForParseAPI(resp *http.Response, err error, objs interface{}) e
 	if err != nil {
 		return err
 	}
-	buff, err := ioutil.ReadAll(resp.Body)
+	buff, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -523,6 +511,28 @@ func (cli *OneClient) Download(file string, downloadDir string, a bool) {
 	}
 }
 
+func (cli *OneClient) Download4Web(file string, downloadDir string, a bool, tc *ThreadControl) *DWorker {
+	wk := NewDWorker()
+	dri, err := cli.APIGetFile(cli.CurDriveID, file)
+	if err != nil {
+		fmt.Println("err = ", err)
+		wk.Error = err
+		return wk
+	}
+	wk.HTTPCli = cli.HTTPClient
+	wk.AuthSve = cli
+	wk.DownloadDir = downloadDir
+	wk.Proxy = a
+	wk.TaskCtl = tc
+	err = wk.Download(dri.DownloadURL)
+	if err != nil {
+		fmt.Println("failed on ", err, " for ", file)
+		wk.Error = err
+		return wk
+	}
+	return wk
+}
+
 func callShellCB(cmd string, URL ...string) error {
 	mycmd := exec.Command(cmd, URL...)
 	err := mycmd.Start()
@@ -567,8 +577,13 @@ func (cli *OneClient) DoAutoForNewUser() {
 		if dd == "" {
 			return
 		}
-		cli.GetFirstToken(dd)
-		w.Write([]byte("save token to local"))
+		err := cli.GetFirstToken(dd)
+		if err != nil {
+			ss := fmt.Sprintf("Token saved to failed err = %s", err.Error())
+			w.Write([]byte(ss))
+		} else {
+			w.Write([]byte("Token saved to local successfully."))
+		}
 		go func() {
 			time.Sleep(time.Second * 3)
 			server.Shutdown(context.Background())
@@ -576,14 +591,13 @@ func (cli *OneClient) DoAutoForNewUser() {
 	})
 	err := server.ListenAndServe()
 	if err != nil && http.ErrServerClosed == err {
-		fmt.Println("done all")
-		return
+		fmt.Println("Token saved successfully, temporary HTTP server shut down and exited.")
+	} else {
+		fmt.Println("HTTP server start to failed,err = ", err)
 	}
-	if err != nil {
-		fmt.Println("run http server to failed,server err = ", err)
-	}
+
 }
-func mytest() {
+func Mytest() {
 
 	//core.Debug = false
 
@@ -595,29 +609,26 @@ func mytest() {
 
 	//API##########
 
-	cli.APIGetMeDrive()
-
-	resp, err := cli.APIListFilesByPath(cli.CurDriveID, "/backup/pics/indexbj")
+	dri, err := cli.APIGetMeDrive()
 	if err != nil {
 		fmt.Println("err = ", err)
 		return
 	}
-	fmt.Println("len=", len(resp.Value))
+	fmt.Println(dri.ID)
 
-	for _, val := range resp.Value {
-		fmt.Println(val.Name)
-		fmt.Println(val.ID)
-		fmt.Println(val.Size)
-		fmt.Println(val.GetSize())
+}
+
+func (cli *OneClient) VerifyAndUpdateForToken() error {
+	expires := time.Time(cli.Token.ExpiresTime)
+	expires = expires.Truncate(time.Minute)
+	if time.Now().After(expires) {
+		//fmt.Println("to expries time, update token")
+		newToken, err := cli.UpdateToken()
+		if err != nil {
+			return err
+		}
+		cli.Token = newToken
 	}
-	/*
-		//cli.APISearchByKey(cli.CurDriveID, "test")
-
-			err := cli.UploadSource("bona1.mkv", cli.CurDriveID, "/test/")
-			if err != nil {
-				fmt.Println("err = ", err)
-				return
-			}
-	*/
+	return nil
 
 }

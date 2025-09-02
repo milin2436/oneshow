@@ -1,7 +1,6 @@
 package one
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -9,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -80,16 +78,11 @@ func (fs *OneFileSystem) Copy(cache *OneFile) *OneFile {
 	ret.FullPath = cache.FullPath
 	return ret
 }
-func (fs *OneFileSystem) cacheItemCheckExist(name string, item *Item) *OneFile {
-	of := fs.Cache[name]
-	if of == nil {
-		return fs.CacheItem(name, item)
-	}
-	return of
-}
 func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
 	fmt.Println("fs.getFileFromCache :", name)
+	cacheMutex.RLock()
 	of := fs.Cache[name]
+	cacheMutex.RUnlock()
 	if of == nil {
 		info, err := fs.Client.APIGetFile(fs.Client.CurDriveID, name)
 		fmt.Println("err = ", err)
@@ -114,10 +107,7 @@ func (fs *OneFileSystem) getFileFromCache(name string) (*OneFile, error) {
 }
 
 func isIncludeOp(op int, flag int) bool {
-	if (flag & op) == op {
-		return true
-	}
-	return false
+	return (flag & op) == op
 }
 
 //Mkdir create a directory
@@ -150,7 +140,7 @@ func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, pe
 		}
 		return of, err
 	}
-	return nil, errors.New("No support")
+	return nil, errors.New("no support")
 }
 
 //RemoveAll Move files and directories to the recycle bin
@@ -327,44 +317,13 @@ func (of *OneFile) ModTime() time.Time {
 //IsDir whether this oneFile is a directory
 func (of *OneFile) IsDir() bool {
 	fmt.Println("OneFile.isDir", of.Name())
-	if of.item.Folder != nil {
-		return true
-	}
-	return false
+	return of.item.Folder != nil
 }
 
 //Sys return nil one onedrive
 func (of *OneFile) Sys() interface{} {
 	fmt.Println("OneFile.Sys", of.Name())
 	return nil
-}
-
-func (of *OneFile) getRightBufferSize() int {
-	lname := strings.ToLower(of.Name())
-	//video file
-	if strings.HasSuffix(lname, ".mp4") ||
-		strings.HasSuffix(lname, ".mkv") ||
-		strings.HasSuffix(lname, ".wmv") ||
-		strings.HasSuffix(lname, ".webm") ||
-		strings.HasSuffix(lname, ".avi") ||
-		strings.HasSuffix(lname, ".rmvb") ||
-		strings.HasSuffix(lname, ".rm") {
-		return 25 * MB
-	}
-	// 1G+
-	if int64(1024*MB) < of.Size() {
-		return 25 * MB
-	}
-
-	if of.Size() > int64(200*MB) && of.Size() <= int64(1024*MB) {
-		return 10 * MB
-	}
-	return MB
-}
-func (of *OneFile) getBuff(size int) *bytes.Buffer {
-	buff := new(bytes.Buffer)
-	buff.Grow(size)
-	return buff
 }
 
 func (of *OneFile) closeRemoteStream() {
