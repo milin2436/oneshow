@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/milin2436/oneshow/core"
-	chttp "github.com/milin2436/oneshow/http"
+	"github.com/milin2436/oneshow/v2/core"
+	chttp "github.com/milin2436/oneshow/v2/http"
 )
 
 type UploadTask interface {

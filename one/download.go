@@ -15,15 +15,15 @@ import (
 	"sync"
 	"time"
 
-	chttp "github.com/milin2436/oneshow/http"
+	chttp "github.com/milin2436/oneshow/v2/http"
 )
 
-//AuthService add auth for download service
+// AuthService add auth for download service
 type AuthService interface {
 	GetTokenHeader() map[string]string
 }
 
-//DownloadInfo show download info
+// DownloadInfo show download info
 type DownloadInfo struct {
 	URL             string
 	FileName        string
@@ -35,7 +35,7 @@ type DownloadInfo struct {
 	LastUpdatedTime time.Time
 }
 
-//DWorker download class
+// DWorker download class
 type DWorker struct {
 	HTTPCli     *chttp.HttpClient
 	CurDownload *DownloadInfo
@@ -57,7 +57,7 @@ type ThreadControl struct {
 	CancelFn context.CancelFunc
 }
 
-//DownloadManager manager download task
+// DownloadManager manager download task
 type DownloadManager struct {
 	startID       int
 	rootContext   context.Context
@@ -70,7 +70,7 @@ type DownloadManager struct {
 	dataLock      sync.RWMutex
 }
 
-//GetDownloadFileName get name of download source
+// GetDownloadFileName get name of download source
 func GetDownloadFileName(u *url.URL, fileName string, disposition string) string {
 	if disposition != "" && strings.Contains(disposition, "filename") {
 		_, params, err := mime.ParseMediaType(disposition)
@@ -449,7 +449,7 @@ func (wk *DWorker) execResumableDownload(durl string, position int64, fileSize i
 	return nil
 }
 
-//NewDWorker create a download worker
+// NewDWorker create a download worker
 func NewDWorker() *DWorker {
 	wk := new(DWorker)
 	wk.CurDownload = new(DownloadInfo)

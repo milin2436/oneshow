@@ -9,28 +9,28 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/milin2436/oneshow/core"
+	"github.com/milin2436/oneshow/v2/core"
 )
 
-//CurUser who is the current user
+// CurUser who is the current user
 const CurUser string = ".od_cur_user.id"
 
-//ConfigFileDefault default user when login
+// ConfigFileDefault default user when login
 const ConfigFileDefault string = ".od.json"
 
-//AppConfigDir config dir
+// AppConfigDir config dir
 const AppConfigDir = ".config/oneshow"
 
-//OneshowConfigFile config file name
+// OneshowConfigFile config file name
 const OneshowConfigFile string = ".oneshow.json"
 
-//OneshowConfig load .oneshow.json config file
+// OneshowConfig load .oneshow.json config file
 var OneshowConfig *OneShowConfig
 
 type ConfigManager struct {
 }
 
-//GetConfigDir app config dir
+// GetConfigDir app config dir
 func GetConfigDir() string {
 	home, _ := os.UserHomeDir()
 	configDir := AppConfigDir
@@ -81,7 +81,7 @@ func (u *OneClient) findConfigFile() (string, error) {
 	return string(buff), nil
 }
 
-//InitOneShowConfig load oneshow config information
+// InitOneShowConfig load oneshow config information
 func InitOneShowConfig() {
 	//HOME USER PWD SHELL
 	OneshowConfig = new(OneShowConfig)
@@ -133,7 +133,7 @@ func (u *OneClient) getConfigAuthToken() *AuthToken {
 	return cfg
 }
 
-//SaveToken2Home home
+// SaveToken2Home home
 func (u *OneClient) SaveToken2Home(token *AuthToken) error {
 	home := GetConfigDir()
 	pcfg := ""
@@ -145,7 +145,7 @@ func (u *OneClient) SaveToken2Home(token *AuthToken) error {
 	return SaveToken2Config(token, pcfg)
 }
 
-//SaveToken2DefaultPath save config when first login
+// SaveToken2DefaultPath save config when first login
 func SaveToken2DefaultPath(token *AuthToken) error {
 	home := GetConfigDir()
 	pcfg := ""
@@ -157,7 +157,7 @@ func SaveToken2DefaultPath(token *AuthToken) error {
 	return SaveToken2Config(token, pcfg)
 }
 
-//SaveToken2Config save to configure file
+// SaveToken2Config save to configure file
 func SaveToken2Config(token *AuthToken, configFile string) error {
 	buff, err := json.Marshal(token)
 	if err != nil {

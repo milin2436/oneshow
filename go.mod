@@ -1,4 +1,4 @@
-module github.com/milin2436/oneshow
+module github.com/milin2436/oneshow/v2
 
 go 1.16
 

@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/milin2436/oneshow/core"
+	"github.com/milin2436/oneshow/v2/core"
 )
 
 const k320 int64 = 327680

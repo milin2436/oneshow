@@ -7,9 +7,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/milin2436/oneshow/cmd"
-	"github.com/milin2436/oneshow/core"
-	"github.com/milin2436/oneshow/one"
+	"github.com/milin2436/oneshow/v2/cmd"
+	"github.com/milin2436/oneshow/v2/core"
+	"github.com/milin2436/oneshow/v2/one"
 )
 
 func Download(cli *one.OneClient, downloadDir string, dirPath string, a bool) {

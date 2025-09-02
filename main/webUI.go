@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/milin2436/oneshow/one"
-	"github.com/milin2436/oneshow/one/utils"
+	"github.com/milin2436/oneshow/v2/one"
+	"github.com/milin2436/oneshow/v2/one/utils"
 	"golang.org/x/net/webdav"
 )
 
