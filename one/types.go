@@ -14,7 +14,7 @@ const (
 	PackageTypeOneNote = "oneNote"
 )
 
-// AuthError is error type
+// UploadURLResult is returned by the upload-session endpoints.
 type UploadURLResult struct {
 	UploadURL          string    `json:"uploadUrl"`
 	ExpirationDateTime Timestamp `json:"expirationDateTime"`
@@ -27,7 +27,7 @@ type AuthError struct {
 	ErrorDescription string `json:"error_description"`
 }
 
-//AuthToken is from token of API
+// AuthToken is from token of API
 type AuthToken struct {
 	AccessToken  string `json:"access_token"`
 	TokenType    string `json:"token_type"`
@@ -40,11 +40,11 @@ type AuthToken struct {
 	DriveID     string    `json:"drive_id"`
 }
 
-//oneshow application config
+// oneshow application config
 type OneShowConfig struct {
 	AcceleratedAPI string `json:"accelerated_api"`
 	Acceleration   bool   `json:"acceleration"`
-	Client_ID      string `json:"client_id"`
+	ClientID       string `json:"client_id"`
 	ClientSecret   string `json:"client_secret"`
 	Scope          string `json:"scope"`
 	RedirectURL    string `json:"redirect_uri"`
@@ -287,8 +287,8 @@ type MoveItemRequest struct {
 	FileSystemInfo  *FileSystemInfoFacet `json:"fileSystemInfo,omitempty"`  // File system information on client. Read-write.
 }
 
-//CreateShareLinkRequest is the request to create a sharing link
-//Always Type:view and Scope:anonymous for public sharing
+// CreateShareLinkRequest is the request to create a sharing link
+// Always Type:view and Scope:anonymous for public sharing
 type CreateShareLinkRequest struct {
 	Type     string     `json:"type"`                         // Link type in View, Edit or Embed
 	Scope    string     `json:"scope,omitempty"`              // Scope in anonymous, organization
@@ -296,7 +296,7 @@ type CreateShareLinkRequest struct {
 	Expiry   *time.Time `json:"expirationDateTime,omitempty"` // A String with format of yyyy-MM-ddTHH:mm:ssZ of DateTime indicates the expiration time of the permission.
 }
 
-//CreateShareLinkResponse is the response from CreateShareLinkRequest
+// CreateShareLinkResponse is the response from CreateShareLinkRequest
 type CreateShareLinkResponse struct {
 	ID    string   `json:"id"`
 	Roles []string `json:"roles"`

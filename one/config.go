@@ -12,25 +12,25 @@ import (
 	"github.com/milin2436/oneshow/core"
 )
 
-//CurUser who is the current user
+// CurUser who is the current user
 const CurUser string = ".od_cur_user.id"
 
-//ConfigFileDefault default user when login
+// ConfigFileDefault default user when login
 const ConfigFileDefault string = ".od.json"
 
-//AppConfigDir config dir
+// AppConfigDir config dir
 const AppConfigDir = ".config/oneshow"
 
-//OneshowConfigFile config file name
-const OneshowConfigFile string = ".oneshow.json"
+// OneShowConfigFile config file name
+const OneShowConfigFile string = ".oneshow.json"
 
-//OneshowConfig load .oneshow.json config file
-var OneshowConfig *OneShowConfig
+// AppConfig holds the loaded .oneshow.json application config.
+var AppConfig *OneShowConfig
 
 type ConfigManager struct {
 }
 
-//GetConfigDir app config dir
+// GetConfigDir app config dir
 func GetConfigDir() string {
 	home, _ := os.UserHomeDir()
 	configDir := AppConfigDir
@@ -81,18 +81,18 @@ func (u *OneClient) findConfigFile() (string, error) {
 	return string(buff), nil
 }
 
-//InitOneShowConfig load oneshow config information
+// InitOneShowConfig load oneshow config information
 func InitOneShowConfig() {
 	//HOME USER PWD SHELL
-	OneshowConfig = new(OneShowConfig)
+	AppConfig = new(OneShowConfig)
 	home := GetConfigDir()
 	if home != "" {
-		fullPath := filepath.Join(home, OneshowConfigFile)
+		fullPath := filepath.Join(home, OneShowConfigFile)
 		buff, err := os.ReadFile(fullPath)
 		if err != nil {
 			return
 		}
-		err = json.Unmarshal(buff, OneshowConfig)
+		err = json.Unmarshal(buff, AppConfig)
 		if err != nil {
 			fmt.Println("err = ", err)
 			return
@@ -103,16 +103,16 @@ func InitOneShowConfig() {
 }
 
 func setupOneShowConfig() {
-	cfg := OneshowConfig
-	if cfg.Client_ID != "" && cfg.ClientSecret != "" {
-		//fmt.Println("using a third-party client :", cfg.Client_ID)
-		CLIENT_ID = cfg.Client_ID
-		CLIENT_SECRET = cfg.ClientSecret
+	cfg := AppConfig
+	if cfg.ClientID != "" && cfg.ClientSecret != "" {
+		//fmt.Println("using a third-party client :", cfg.ClientID)
+		ClientID = cfg.ClientID
+		ClientSecret = cfg.ClientSecret
 		if cfg.Scope != "" {
-			SCOPE = cfg.Scope
+			Scope = cfg.Scope
 		}
 		if cfg.RedirectURL != "" {
-			CALLBACK_URL = cfg.RedirectURL
+			CallbackURL = cfg.RedirectURL
 		}
 	}
 }
@@ -133,8 +133,8 @@ func (u *OneClient) getConfigAuthToken() *AuthToken {
 	return cfg
 }
 
-//SaveToken2Home home
-func (u *OneClient) SaveToken2Home(token *AuthToken) error {
+// SaveTokenToHome home
+func (u *OneClient) SaveTokenToHome(token *AuthToken) error {
 	home := GetConfigDir()
 	pcfg := ""
 	if home != "" {
@@ -142,11 +142,11 @@ func (u *OneClient) SaveToken2Home(token *AuthToken) error {
 	} else {
 		return errors.New("can not found home dir")
 	}
-	return SaveToken2Config(token, pcfg)
+	return SaveTokenToConfig(token, pcfg)
 }
 
-//SaveToken2DefaultPath save config when first login
-func SaveToken2DefaultPath(token *AuthToken) error {
+// SaveTokenToDefaultPath save config when first login
+func SaveTokenToDefaultPath(token *AuthToken) error {
 	home := GetConfigDir()
 	pcfg := ""
 	if home != "" {
@@ -154,11 +154,11 @@ func SaveToken2DefaultPath(token *AuthToken) error {
 	} else {
 		return errors.New("can not found home dir")
 	}
-	return SaveToken2Config(token, pcfg)
+	return SaveTokenToConfig(token, pcfg)
 }
 
-//SaveToken2Config save to configure file
-func SaveToken2Config(token *AuthToken, configFile string) error {
+// SaveTokenToConfig save to configure file
+func SaveTokenToConfig(token *AuthToken, configFile string) error {
 	buff, err := json.Marshal(token)
 	if err != nil {
 		return err

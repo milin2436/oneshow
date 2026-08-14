@@ -14,13 +14,13 @@ import (
 	"golang.org/x/net/webdav"
 )
 
-//OneFileSystem onedrive file system for webdav
+// OneFileSystem onedrive file system for webdav
 type OneFileSystem struct {
 	Cache  map[string]*OneFile
 	Client *OneClient
 }
 
-//OneFile onedrive file for webdav
+// OneFile onedrive file for webdav
 type OneFile struct {
 	Client   *OneClient
 	Fs       *OneFileSystem
@@ -32,15 +32,15 @@ type OneFile struct {
 	createTime *time.Time
 }
 
-var cacheMutex *sync.RWMutex = &sync.RWMutex{}
+var cacheMutex sync.RWMutex
 
-//MB byte unit
+// MB byte unit
 const MB int = 1048576
 
-//KB byte unit
+// KB byte unit
 const KB int = 1024
 
-//DefaultBuffSize default buffer size
+// DefaultBuffSize default buffer size
 const DefaultBuffSize int = 100 * KB
 
 func (fs *OneFileSystem) newOneFileByItem(i *Item, fullPath string) *OneFile {
@@ -52,7 +52,7 @@ func (fs *OneFileSystem) newOneFileByItem(i *Item, fullPath string) *OneFile {
 	return of
 }
 
-//CacheItem cache item Object
+// CacheItem cache item Object
 func (fs *OneFileSystem) CacheItem(name string, item *Item) *OneFile {
 	fmt.Println("cache item :", name)
 	of := fs.newOneFileByItem(item, name)
@@ -69,7 +69,7 @@ func (fs *OneFileSystem) deleteItem(name string) {
 	cacheMutex.Unlock()
 }
 
-//Copy clone
+// Copy clone
 func (fs *OneFileSystem) Copy(cache *OneFile) *OneFile {
 	ret := new(OneFile)
 	ret.item = cache.item
@@ -110,7 +110,7 @@ func isIncludeOp(op int, flag int) bool {
 	return (flag & op) == op
 }
 
-//Mkdir create a directory
+// Mkdir create a directory
 func (fs *OneFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMode) error {
 	fmt.Println("fs.mkdir name ", name)
 	name = filepath.Clean(name)
@@ -121,7 +121,7 @@ func (fs *OneFileSystem) Mkdir(ctx context.Context, name string, perm os.FileMod
 	return err
 }
 
-//OpenFile create or write or read file
+// OpenFile create or write or read file
 func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, perm os.FileMode) (webdav.File, error) {
 	fmt.Println("fs.openFile", name)
 	if isIncludeOp(os.O_CREATE, flag) {
@@ -133,7 +133,7 @@ func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, pe
 	} else {
 		fmt.Println("flag :read")
 		//read
-		dirPath := getOnedrivePath(name)
+		dirPath := GetOneDrivePath(name)
 		of, err := fs.getFileFromCache(dirPath)
 		if of != nil {
 			of.Position = 0
@@ -143,14 +143,14 @@ func (fs *OneFileSystem) OpenFile(ctx context.Context, name string, flag int, pe
 	return nil, errors.New("no support")
 }
 
-//RemoveAll Move files and directories to the recycle bin
+// RemoveAll Move files and directories to the recycle bin
 func (fs *OneFileSystem) RemoveAll(ctx context.Context, name string) error {
 	fmt.Println("fs.RemoveAll name=:", name)
 	_, err := fs.Client.APIDelFile(fs.Client.CurDriveID, name)
 	return err
 }
 
-//Rename rename file
+// Rename rename file
 func (fs *OneFileSystem) Rename(ctx context.Context, oldName, newName string) error {
 	fmt.Printf("fs.Rename old name %s ; new name %s", oldName, newName)
 	old, err := fs.getFileFromCache(oldName)
@@ -162,7 +162,7 @@ func (fs *OneFileSystem) Rename(ctx context.Context, oldName, newName string) er
 		return errors.New("no dir id")
 	}
 	cli := fs.Client
-	//dir = getOnedrivePath(dir)
+	//dir = GetOneDrivePath(dir)
 	newparent := filepath.Dir(newName)
 	fmt.Printf("new parent = %s \n", newparent)
 	idir, err := cli.APIGetFile(cli.CurDriveID, newparent)
@@ -178,10 +178,10 @@ func (fs *OneFileSystem) Rename(ctx context.Context, oldName, newName string) er
 	return err
 }
 
-//Stat return information of name
+// Stat return information of name
 func (fs *OneFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, error) {
 	fmt.Println("fs.stat file = ", name)
-	dirPath := getOnedrivePath(name)
+	dirPath := GetOneDrivePath(name)
 	it, err := fs.getFileFromCache(dirPath)
 	if err != nil {
 		return nil, os.ErrNotExist
@@ -189,13 +189,13 @@ func (fs *OneFileSystem) Stat(ctx context.Context, name string) (os.FileInfo, er
 	return it, nil
 }
 
-//write Now no support write
+// write Now no support write
 func (of *OneFile) Write(p []byte) (n int, err error) {
 	fmt.Printf("call OneFile.Write for name = %s\n", of.FullPath)
 	return 0, errors.New("no support write")
 }
 
-//Close release resources
+// Close release resources
 func (of *OneFile) Close() error {
 	fmt.Printf("call OneFile.Close for name = %s\n", of.FullPath)
 
@@ -211,7 +211,7 @@ func (of *OneFile) Close() error {
 	return nil
 }
 
-//Read read content of this file
+// Read read content of this file
 func (of *OneFile) Read(p []byte) (n int, err error) {
 	fmt.Println("oneFile.read ", of.Name(), " position = ", of.Position)
 	fmt.Println("framework buff len:", len(p))
@@ -244,7 +244,7 @@ func (of *OneFile) Read(p []byte) (n int, err error) {
 	return size, err
 }
 
-//Seek setup position of this file
+// Seek setup position of this file
 func (of *OneFile) Seek(offset int64, whence int) (int64, error) {
 	fmt.Printf("OneFile.seek name = %s offset %d , whence %d\n", of.Name(), offset, whence)
 	if os.SEEK_SET == whence {
@@ -263,7 +263,7 @@ func (of *OneFile) Seek(offset int64, whence int) (int64, error) {
 	return of.Position, nil
 }
 
-//Readdir Returns all files and directories under the directory
+// Readdir Returns all files and directories under the directory
 func (of *OneFile) Readdir(count int) ([]os.FileInfo, error) {
 	fmt.Println("call oneFile.readdir:", of.Name())
 	if of.IsDir() {
@@ -286,41 +286,41 @@ func (of *OneFile) Readdir(count int) ([]os.FileInfo, error) {
 	return nil, errors.New("this is file :" + of.Name())
 }
 
-//Stat infomation of file
+// Stat infomation of file
 func (of *OneFile) Stat() (os.FileInfo, error) {
 	fmt.Printf("call OneFile.Stat name = %s\n", of.FullPath)
 	return of, nil
 }
 
-//Name name of file
+// Name name of file
 func (of *OneFile) Name() string {
 	return of.item.Name
 }
 
-//Size file size
+// Size file size
 func (of *OneFile) Size() int64 {
 	return of.item.Size
 }
 
-//Mode default for everyone
+// Mode default for everyone
 func (of *OneFile) Mode() os.FileMode {
 	return 0777
 }
 
-//ModTime return modified time
+// ModTime return modified time
 func (of *OneFile) ModTime() time.Time {
 	mdTime := time.Time(of.item.LastModifiedDateTime)
 	//dsTime := mdTime.Local()
 	return mdTime
 }
 
-//IsDir whether this oneFile is a directory
+// IsDir whether this oneFile is a directory
 func (of *OneFile) IsDir() bool {
 	fmt.Println("OneFile.isDir", of.Name())
 	return of.item.Folder != nil
 }
 
-//Sys return nil one onedrive
+// Sys return nil one onedrive
 func (of *OneFile) Sys() interface{} {
 	fmt.Println("OneFile.Sys", of.Name())
 	return nil
@@ -333,31 +333,20 @@ func (of *OneFile) closeRemoteStream() {
 	}
 }
 
-func getOnedrivePath(dirPath string) string {
-	if dirPath == "" {
-		dirPath = "/"
-	}
-	strLen := len(dirPath)
-	if strLen > 1 && dirPath[strLen-1] == '/' {
-		dirPath = dirPath[:strLen-1]
-	}
-	return dirPath
-}
-
 func AcceleratedURL(hurl string) string {
-	if !OneshowConfig.Acceleration {
+	if !AppConfig.Acceleration {
 		return hurl
 	}
-	if OneshowConfig.AcceleratedAPI == "" {
+	if AppConfig.AcceleratedAPI == "" {
 		return hurl
 	}
 	p := url.QueryEscape(hurl)
-	return OneshowConfig.AcceleratedAPI + p
+	return AppConfig.AcceleratedAPI + p
 }
 func getAcceleratedURL(hurl string) string {
-	if OneshowConfig.AcceleratedAPI == "" {
+	if AppConfig.AcceleratedAPI == "" {
 		return hurl
 	}
 	p := url.QueryEscape(hurl)
-	return OneshowConfig.AcceleratedAPI + p
+	return AppConfig.AcceleratedAPI + p
 }

@@ -4,15 +4,14 @@ import (
 	"net/http"
 )
 
-//http base
-
-//GetQueryParamByKey get param for get method
+// GetQueryParamByKey get param for get method
 func GetQueryParamByKey(r *http.Request, key string) string {
-
-	keys, ok := r.URL.Query()[key]
-	if !ok || len(keys[0]) < 1 {
+	if r == nil || r.URL == nil {
 		return ""
 	}
-
+	keys, ok := r.URL.Query()[key]
+	if !ok || len(keys) == 0 || keys[0] == "" {
+		return ""
+	}
 	return keys[0]
 }

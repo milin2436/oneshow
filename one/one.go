@@ -13,22 +13,22 @@ import (
 	"strings"
 	"time"
 
-	chttp "github.com/milin2436/oneshow/http"
-
 	"github.com/milin2436/oneshow/core"
+	chttp "github.com/milin2436/oneshow/http"
+	"github.com/milin2436/oneshow/one/utils"
 )
 
-var CLIENT_ID string = "51d4977e-8740-41c9-956b-bc5fa4f58806"
+var ClientID string = "51d4977e-8740-41c9-956b-bc5fa4f58806"
 
-var CLIENT_SECRET string = "jvv9q-o9Yt2bxg.6kRmOLi~5xhQDrN.5._"
+var ClientSecret string = "jvv9q-o9Yt2bxg.6kRmOLi~5xhQDrN.5._"
 
-var SCOPE string = "Files.Read Files.ReadWrite Files.Read.All Files.ReadWrite.All offline_access Sites.Read.All User.Read"
+var Scope string = "Files.Read Files.ReadWrite Files.Read.All Files.ReadWrite.All offline_access Sites.Read.All User.Read"
 
-var CALLBACK_URL = "http://localhost:4444/result"
+var CallbackURL = "http://localhost:4444/result"
 
-//OneClient is context object
+// OneClient is context object
 type OneClient struct {
-	HTTPClient *chttp.HttpClient
+	HTTPClient *chttp.HTTPClient
 
 	SSOHost string
 	APIHost string
@@ -37,11 +37,6 @@ type OneClient struct {
 	ConfigFile string
 	Token      *AuthToken
 	CurDriveID string
-}
-
-//NewDefaultCli new a default oneshow client
-func NewDefaultCli() (*OneClient, error) {
-	return NewOneClient()
 }
 
 // GetAuthCodeURL gen an URL for get auto code from API
@@ -57,11 +52,11 @@ func (cli *OneClient) GetAuthCodeURL() string {
 		parmsVal.Add(k, v)
 	}
 	URL := cli.SSOHost + uri + "?" + parmsVal.Encode()
-	core.Println(URL)
+	core.DebugPrintln(URL)
 	return URL
 }
 
-//GetFirstToken get token and reflesh token by code
+// GetFirstToken get token and refresh token by code
 func (cli *OneClient) GetFirstToken(code string) error {
 	parms := cli.GetOneDriveAppInfoWithSecret()
 	parms["grant_type"] = "authorization_code"
@@ -70,18 +65,18 @@ func (cli *OneClient) GetFirstToken(code string) error {
 	uri := "/common/oauth2/v2.0/token"
 	URL := cli.SSOHost + uri
 
-	token, err := HandleResponForParseToken(cli.HTTPClient.HttpFormPost(URL, nil, parms))
+	token, err := HandleResponseForParseToken(cli.HTTPClient.HTTPFormPost(URL, nil, parms))
 	if err != nil {
-		core.Println("err=", err)
+		core.DebugPrintln("err=", err)
 		return err
 	}
-	core.Println("first refresh token:", token.RefreshToken)
+	core.DebugPrintln("first refresh token:", token.RefreshToken)
 	cli.Token = token
-	cli.SaveToken2HomeDefault(token)
+	cli.SaveTokenToHomeDefault(token)
 	return nil
 }
 
-//UpdateToken update expried token
+// UpdateToken update expired token
 func (cli *OneClient) UpdateToken() (*AuthToken, error) {
 	parms := cli.GetOneDriveAppInfoWithSecret()
 	parms["grant_type"] = "refresh_token"
@@ -89,24 +84,24 @@ func (cli *OneClient) UpdateToken() (*AuthToken, error) {
 
 	uri := "/common/oauth2/v2.0/token"
 	URL := cli.SSOHost + uri
-	token, err := HandleResponForParseToken(cli.HTTPClient.HttpFormPost(URL, nil, parms))
+	token, err := HandleResponseForParseToken(cli.HTTPClient.HTTPFormPost(URL, nil, parms))
 	if err != nil {
-		core.Println("err=", err)
+		core.DebugPrintln("err=", err)
 		return nil, err
 	}
 	//using old drive ID
 	token.DriveID = cli.CurDriveID
 	cli.Token = token
-	err = cli.SaveToken2UserConfig(token)
+	err = cli.SaveTokenToUserConfig(token)
 	if err != nil {
 		return nil, err
 	}
-	core.Println(token.AccessToken)
+	core.DebugPrintln(token.AccessToken)
 	return token, nil
 }
 
-//SaveToken2Home save token to local
-func (cli *OneClient) SaveToken2UserConfig(token *AuthToken) error {
+// SaveTokenToUserConfig save token to the user's own config
+func (cli *OneClient) SaveTokenToUserConfig(token *AuthToken) error {
 	exTime := time.Now().Add(time.Second * time.Duration(token.ExpiresIn-60))
 	token.ExpiresTime = Timestamp(exTime)
 	if token.DriveID == "" {
@@ -116,38 +111,38 @@ func (cli *OneClient) SaveToken2UserConfig(token *AuthToken) error {
 		}
 		token.DriveID = dri.ID
 	}
-	cli.SaveToken2Home(token)
+	cli.SaveTokenToHome(token)
 	return nil
 }
 
-//SaveToken2Home save token to local
-func (cli *OneClient) SaveToken2HomeDefault(token *AuthToken) {
+// SaveTokenToHomeDefault save token to default config when first login
+func (cli *OneClient) SaveTokenToHomeDefault(token *AuthToken) {
 	exTime := time.Now().Add(time.Second * time.Duration(token.ExpiresIn-60))
 	token.ExpiresTime = Timestamp(exTime)
 	dri, err := cli.APIGetMeDrive()
 	if err == nil {
 		token.DriveID = dri.ID
 	}
-	SaveToken2DefaultPath(token)
+	SaveTokenToDefaultPath(token)
 }
 
-//GetOneDriveAppInfo setup application information
+// GetOneDriveAppInfo setup application information
 func (cli *OneClient) GetOneDriveAppInfo() map[string]string {
 	parms := map[string]string{}
-	parms["client_id"] = CLIENT_ID
-	parms["scope"] = SCOPE
-	parms["redirect_uri"] = CALLBACK_URL
+	parms["client_id"] = ClientID
+	parms["scope"] = Scope
+	parms["redirect_uri"] = CallbackURL
 	return parms
 }
 
-//GetOneDriveAppInfoWithSecret with secret info
+// GetOneDriveAppInfoWithSecret with secret info
 func (cli *OneClient) GetOneDriveAppInfoWithSecret() map[string]string {
 	p := cli.GetOneDriveAppInfo()
-	p["client_secret"] = CLIENT_SECRET
+	p["client_secret"] = ClientSecret
 	return p
 }
 
-//SetOneDriveAPIToken for http request setup a token
+// SetOneDriveAPIToken for http request setup a token
 func (cli *OneClient) SetOneDriveAPIToken() map[string]string {
 	header := map[string]string{}
 	header["Content-Type"] = "application/json"
@@ -155,45 +150,35 @@ func (cli *OneClient) SetOneDriveAPIToken() map[string]string {
 	return header
 }
 
-//APIGetUserInfo get user info from api
-func (cli *OneClient) APIGetUserInfo() {
-	uri := "/me"
-	URL := cli.APIHost + uri
-	header := cli.SetOneDriveAPIToken()
-	json, err := chttp.HandleRespon2String(cli.HTTPClient.HttpGet(URL, header, nil))
-	if err != nil {
-		fmt.Println("err=", err)
-		return
-	}
-	fmt.Println(json)
-}
-
-//APIGetMeDrive get onedrive infomation
+// APIGetMeDrive get onedrive infomation
 func (cli *OneClient) APIGetMeDrive() (*Drive, error) {
 	uri := "/me/drive"
 	URL := cli.APIHost + uri
 	header := cli.SetOneDriveAPIToken()
 	dri := new(Drive)
-	resp, err := cli.HTTPClient.HttpGet(URL, header, nil)
-	err = HandleResponForParseAPI(resp, err, dri)
+	resp, err := cli.HTTPClient.HTTPGet(URL, header, nil)
+	err = HandleResponseForParseAPI(resp, err, dri)
 	if err != nil {
 		fmt.Println("err=", err)
 		return nil, err
 	}
-	core.Println("id=", dri.ID)
+	core.DebugPrintln("id=", dri.ID)
 	return dri, nil
 }
+
 func (cli *OneClient) apiListFilesByPath(url string) (*ListChildrenResponse, error) {
-	core.Println("APIListFilesByPath request url = ", url)
+	core.DebugPrintln("APIListFilesByPath request url = ", url)
 	header := cli.SetOneDriveAPIToken()
 	objs := new(ListChildrenResponse)
-	resp, err := cli.HTTPClient.HttpGet(url, header, nil)
-	err = HandleResponForParseAPI(resp, err, objs)
+	resp, err := cli.HTTPClient.HTTPGet(url, header, nil)
+	err = HandleResponseForParseAPI(resp, err, objs)
 	if err != nil {
 		return nil, err
 	}
 	return objs, nil
 }
+
+// APIListFilesByPath get files by path, following pagination links
 func (cli *OneClient) APIListFilesByPath(driveID string, path string) (*ListChildrenResponse, error) {
 	uri := "/drives/%s/root:%s:/children"
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
@@ -219,41 +204,22 @@ func (cli *OneClient) APIListFilesByPath(driveID string, path string) (*ListChil
 	return resp, err
 }
 
-//APIListFilesByPath get files by path
-func (cli *OneClient) APIListFilesByPath0(driveID string, path string) (*ListChildrenResponse, error) {
-	uri := "/drives/%s/root:%s:/children"
-	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
-	if path == "/" {
-		uri := "/drives/%s/root/children"
-		URL = cli.APIHost + fmt.Sprintf(uri, driveID)
-	}
-	core.Println("APIListFilesByPath request url = ", URL)
-	header := cli.SetOneDriveAPIToken()
-	objs := new(ListChildrenResponse)
-	resp, err := cli.HTTPClient.HttpGet(URL, header, nil)
-	err = HandleResponForParseAPI(resp, err, objs)
-	if err != nil {
-		return nil, err
-	}
-	return objs, nil
-}
-
-//APISearchByKey search files by Key
+// APISearchByKey search files by Key
 func (cli *OneClient) APISearchByKey(driveID string, key string) (*ListChildrenResponse, error) {
 	uri := "/drives/%s/root/search(q='%s')"
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, key)
-	core.Println("APISearchByKey request url = ", URL)
+	core.DebugPrintln("APISearchByKey request url = ", URL)
 	header := cli.SetOneDriveAPIToken()
 	objs := new(ListChildrenResponse)
-	resp, err := cli.HTTPClient.HttpGet(URL, header, nil)
-	err = HandleResponForParseAPI(resp, err, objs)
+	resp, err := cli.HTTPClient.HTTPGet(URL, header, nil)
+	err = HandleResponseForParseAPI(resp, err, objs)
 	if err != nil {
 		return nil, err
 	}
 	return objs, nil
 }
 
-//APIGetFile get a file by file path
+// APIGetFile get a file by file path
 func (cli *OneClient) APIGetFile(driveID string, path string) (*Item, error) {
 	URL := ""
 	if path == "/" {
@@ -263,30 +229,32 @@ func (cli *OneClient) APIGetFile(driveID string, path string) (*Item, error) {
 		uri := "/drives/%s/root:%s"
 		URL = cli.APIHost + fmt.Sprintf(uri, driveID, path)
 	}
-	core.Println("URI = ", URL)
+	core.DebugPrintln("URI = ", URL)
 	header := cli.SetOneDriveAPIToken()
 	objs := new(Item)
-	resp, err := cli.HTTPClient.HttpGet(URL, header, nil)
-	err = HandleResponForParseAPI(resp, err, objs)
-	if err != nil {
-		return nil, err
-	}
-	return objs, nil
-}
-func (cli *OneClient) APIGetFileByID(driveID string, ID string) (*Item, error) {
-	uri := "/drives/%s/items/%s"
-	URL := cli.APIHost + fmt.Sprintf(uri, driveID, ID)
-	header := cli.SetOneDriveAPIToken()
-	objs := new(Item)
-	resp, err := cli.HTTPClient.HttpGet(URL, header, nil)
-	err = HandleResponForParseAPI(resp, err, objs)
+	resp, err := cli.HTTPClient.HTTPGet(URL, header, nil)
+	err = HandleResponseForParseAPI(resp, err, objs)
 	if err != nil {
 		return nil, err
 	}
 	return objs, nil
 }
 
-//APIDelFileByItemID delete file by item ID
+// APIGetFileByID get a file by item ID
+func (cli *OneClient) APIGetFileByID(driveID string, ID string) (*Item, error) {
+	uri := "/drives/%s/items/%s"
+	URL := cli.APIHost + fmt.Sprintf(uri, driveID, ID)
+	header := cli.SetOneDriveAPIToken()
+	objs := new(Item)
+	resp, err := cli.HTTPClient.HTTPGet(URL, header, nil)
+	err = HandleResponseForParseAPI(resp, err, objs)
+	if err != nil {
+		return nil, err
+	}
+	return objs, nil
+}
+
+// APIUpdateFileByItemID update a file's name and parent directory
 func (cli *OneClient) APIUpdateFileByItemID(driveID string, itemID string, newName string, newPathID string) (bool, error) {
 	uri := "/drives/%s/items/%s"
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, itemID)
@@ -299,53 +267,53 @@ func (cli *OneClient) APIUpdateFileByItemID(driveID string, itemID string, newNa
   "name": "%s"
 }`
 	bodyTmp = fmt.Sprintf(bodyTmp, newPathID, newName)
-	core.Println("body =", bodyTmp)
-	resp, err := cli.HTTPClient.HttpRequest("PATCH", URL, header, bodyTmp)
+	core.DebugPrintln("body =", bodyTmp)
+	resp, err := cli.HTTPClient.HTTPRequest("PATCH", URL, header, bodyTmp)
 	if err != nil {
 		return false, err
 	}
 	if resp.StatusCode == 200 {
 		return true, nil
 	} else {
-		return false, HandleResponForParseAPI(resp, nil, nil)
+		return false, HandleResponseForParseAPI(resp, nil, nil)
 	}
 }
 
-//APIDelFileByItemID delete file by item ID
+// APIDelFileByItemID delete file by item ID
 func (cli *OneClient) APIDelFileByItemID(driveID string, itemID string) (bool, error) {
 	uri := "/drives/%s/items/%s"
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, itemID)
 	header := cli.SetOneDriveAPIToken()
 
-	resp, err := cli.HTTPClient.HttpRequest("DELETE", URL, header, "")
+	resp, err := cli.HTTPClient.HTTPRequest("DELETE", URL, header, "")
 	if err != nil {
 		return false, err
 	}
 	if resp.StatusCode == 204 {
 		return true, nil
 	} else {
-		return false, HandleResponForParseAPI(resp, nil, nil)
+		return false, HandleResponseForParseAPI(resp, nil, nil)
 	}
 }
 
-//APIDelFile delete file by file path
+// APIDelFile delete file by file path
 func (cli *OneClient) APIDelFile(driveID string, filePath string) (bool, error) {
 	uri := "/drives/%s/root:%s"
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, filePath)
 	header := cli.SetOneDriveAPIToken()
 
-	resp, err := cli.HTTPClient.HttpRequest("DELETE", URL, header, "")
+	resp, err := cli.HTTPClient.HTTPRequest("DELETE", URL, header, "")
 	if err != nil {
 		return false, err
 	}
 	if resp.StatusCode == 204 {
 		return true, nil
 	} else {
-		return false, HandleResponForParseAPI(resp, nil, nil)
+		return false, HandleResponseForParseAPI(resp, nil, nil)
 	}
 }
 
-//APImkdir create a dir
+// APImkdir create a dir
 func (cli *OneClient) APImkdir(driveID string, path string, dirName string) (*Item, error) {
 	uri := "/drives/%s/root:%s:/children"
 	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
@@ -353,7 +321,7 @@ func (cli *OneClient) APImkdir(driveID string, path string, dirName string) (*It
 		uri := "/drives/%s/root/children"
 		URL = cli.APIHost + fmt.Sprintf(uri, driveID)
 	}
-	core.Println(URL)
+	core.DebugPrintln(URL)
 	header := cli.SetOneDriveAPIToken()
 	objs := new(Item)
 
@@ -363,32 +331,16 @@ func (cli *OneClient) APImkdir(driveID string, path string, dirName string) (*It
   "@microsoft.graph.conflictBehavior": "rename"
 }`
 	body := fmt.Sprintf(bodyTpl, dirName)
-	resp, err := cli.HTTPClient.HttpPost(URL, header, body)
-	err = HandleResponForParseAPI(resp, err, objs)
+	resp, err := cli.HTTPClient.HTTPPost(URL, header, body)
+	err = HandleResponseForParseAPI(resp, err, objs)
 	if err != nil {
 		return nil, err
 	}
 	return objs, nil
 }
 
-//APIUploadText upload a text
-func (cli *OneClient) APIUploadText(driveID string, path string, content string) (*Item, error) {
-	uri := "/drives/%s/root:%s:/content"
-	URL := cli.APIHost + fmt.Sprintf(uri, driveID, path)
-	core.Println(URL)
-	header := cli.SetOneDriveAPIToken()
-	header["Content-Type"] = "text/plain"
-	objs := new(Item)
-	resp, err := cli.HTTPClient.HttpRequest("PUT", URL, header, content)
-	err = HandleResponForParseAPI(resp, err, objs)
-	if err != nil {
-		return nil, err
-	}
-	return objs, nil
-}
-
-//HandleResponForParseToken parse token
-func HandleResponForParseToken(resp *http.Response, err error) (*AuthToken, error) {
+// HandleResponseForParseToken parse token
+func HandleResponseForParseToken(resp *http.Response, err error) (*AuthToken, error) {
 	if resp == nil {
 		return nil, err
 	}
@@ -400,8 +352,8 @@ func HandleResponForParseToken(resp *http.Response, err error) (*AuthToken, erro
 	if err != nil {
 		return nil, err
 	}
-	core.Println("token = ", string(buff))
-	core.Println("statuscode = ", resp.StatusCode)
+	core.DebugPrintln("token = ", string(buff))
+	core.DebugPrintln("statuscode = ", resp.StatusCode)
 	if resp.StatusCode == 200 {
 		token := new(AuthToken)
 		perr := json.Unmarshal(buff, token)
@@ -419,8 +371,8 @@ func HandleResponForParseToken(resp *http.Response, err error) (*AuthToken, erro
 	}
 }
 
-// HandleResponForParseAPI parse api
-func HandleResponForParseAPI(resp *http.Response, err error, objs interface{}) error {
+// HandleResponseForParseAPI parse api
+func HandleResponseForParseAPI(resp *http.Response, err error, objs interface{}) error {
 	if resp == nil {
 		return err
 	}
@@ -432,8 +384,8 @@ func HandleResponForParseAPI(resp *http.Response, err error, objs interface{}) e
 	if err != nil {
 		return err
 	}
-	core.Println(string(buff))
-	core.Println("code,", resp.StatusCode)
+	core.DebugPrintln(string(buff))
+	core.DebugPrintln("code,", resp.StatusCode)
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		perr := json.Unmarshal(buff, objs)
 		if perr != nil {
@@ -450,21 +402,23 @@ func HandleResponForParseAPI(resp *http.Response, err error, objs interface{}) e
 	return nil
 }
 
-//NewBaseOneClient for new user
+// NewBaseOneClient for new user
 func NewBaseOneClient() *OneClient {
 	cli := new(OneClient)
-	httpCli := chttp.NewHttpClient()
+	httpCli := chttp.NewHTTPClient()
 	cli.HTTPClient = httpCli
 	cli.APIHost = "https://graph.microsoft.com/v1.0"
 	cli.SSOHost = "https://login.microsoftonline.com"
 	return cli
 }
 
-//NewOneClient instance a OneClient
+// NewOneClient instance a OneClient
 func NewOneClient() (*OneClient, error) {
 	u := getCurUser()
 	return NewOneClientUser(u)
 }
+
+// NewOneClientUser instance a OneClient for a specific user
 func NewOneClientUser(user string) (*OneClient, error) {
 	cli := NewBaseOneClient()
 	cli.setUserInfo(user)
@@ -475,7 +429,7 @@ func NewOneClientUser(user string) (*OneClient, error) {
 	cli.Token = tk
 	expires := time.Time(tk.ExpiresTime)
 	if time.Now().After(expires) {
-		core.Println("to expries time, update token")
+		core.DebugPrintln("token expired, updating")
 		newToken, err := cli.UpdateToken()
 		if err != nil {
 			return nil, err
@@ -488,12 +442,12 @@ func NewOneClientUser(user string) (*OneClient, error) {
 	return cli, nil
 }
 
-//GetTokenHeader for other client
+// GetTokenHeader for other client
 func (cli *OneClient) GetTokenHeader() map[string]string {
 	return cli.SetOneDriveAPIToken()
 }
 
-//Download file from api
+// Download file from api
 func (cli *OneClient) Download(file string, downloadDir string, a bool) {
 	dri, err := cli.APIGetFile(cli.CurDriveID, file)
 	if err != nil {
@@ -501,8 +455,8 @@ func (cli *OneClient) Download(file string, downloadDir string, a bool) {
 		return
 	}
 	wk := NewDWorker()
-	wk.HTTPCli = cli.HTTPClient
-	wk.AuthSve = cli
+	wk.HTTPClient = cli.HTTPClient
+	wk.AuthService = cli
 	wk.DownloadDir = downloadDir
 	wk.Proxy = a
 	err = wk.Download(dri.DownloadURL)
@@ -511,29 +465,7 @@ func (cli *OneClient) Download(file string, downloadDir string, a bool) {
 	}
 }
 
-func (cli *OneClient) Download4Web(file string, downloadDir string, a bool, tc *ThreadControl) *DWorker {
-	wk := NewDWorker()
-	dri, err := cli.APIGetFile(cli.CurDriveID, file)
-	if err != nil {
-		fmt.Println("err = ", err)
-		wk.Error = err
-		return wk
-	}
-	wk.HTTPCli = cli.HTTPClient
-	wk.AuthSve = cli
-	wk.DownloadDir = downloadDir
-	wk.Proxy = a
-	wk.TaskCtl = tc
-	err = wk.Download(dri.DownloadURL)
-	if err != nil {
-		fmt.Println("failed on ", err, " for ", file)
-		wk.Error = err
-		return wk
-	}
-	return wk
-}
-
-func callShellCB(cmd string, URL ...string) error {
+func openBrowser(cmd string, URL ...string) error {
 	mycmd := exec.Command(cmd, URL...)
 	err := mycmd.Start()
 	go func() {
@@ -544,27 +476,18 @@ func callShellCB(cmd string, URL ...string) error {
 	}()
 	return err
 }
-func getQueryParamByKey(r *http.Request, key string) string {
 
-	keys, ok := r.URL.Query()[key]
-	if !ok || len(keys[0]) < 1 {
-		return ""
-	}
-
-	return keys[0]
-}
-
-//DoAutoForNewUser config a new user
+// DoAutoForNewUser config a new user
 func (cli *OneClient) DoAutoForNewUser() {
 	//open browser
 	go func() {
 		time.Sleep(time.Second * 2)
 		autoURL := cli.GetAuthCodeURL()
 		if runtime.GOOS == "linux" {
-			callShellCB("xdg-open", autoURL)
+			openBrowser("xdg-open", autoURL)
 		} else {
 			autoURL = strings.ReplaceAll(autoURL, "&", "^&")
-			callShellCB("cmd", "/C", "start", autoURL)
+			openBrowser("cmd", "/C", "start", autoURL)
 		}
 	}()
 	respURL := cli.GetOneDriveAppInfo()["redirect_uri"]
@@ -572,7 +495,7 @@ func (cli *OneClient) DoAutoForNewUser() {
 	sm := http.NewServeMux()
 	server := http.Server{Addr: u.Host, Handler: sm}
 	sm.HandleFunc(u.Path, func(w http.ResponseWriter, r *http.Request) {
-		dd := getQueryParamByKey(r, "code")
+		dd := utils.GetQueryParamByKey(r, "code")
 		fmt.Println("code=", dd)
 		if dd == "" {
 			return
@@ -595,34 +518,13 @@ func (cli *OneClient) DoAutoForNewUser() {
 	} else {
 		fmt.Println("HTTP server start to failed,err = ", err)
 	}
-
-}
-func Mytest() {
-
-	//core.Debug = false
-
-	cli, _ := NewOneClient()
-
-	//cli.GetAuthCode()
-	//cli.GetFirstToken()
-	//cli.UpdateToken()
-
-	//API##########
-
-	dri, err := cli.APIGetMeDrive()
-	if err != nil {
-		fmt.Println("err = ", err)
-		return
-	}
-	fmt.Println(dri.ID)
-
 }
 
-func (cli *OneClient) VerifyAndUpdateForToken() error {
+// VerifyAndUpdateToken refresh the token before it expires
+func (cli *OneClient) VerifyAndUpdateToken() error {
 	expires := time.Time(cli.Token.ExpiresTime)
 	expires = expires.Truncate(time.Minute)
 	if time.Now().After(expires) {
-		//fmt.Println("to expries time, update token")
 		newToken, err := cli.UpdateToken()
 		if err != nil {
 			return err
@@ -630,5 +532,4 @@ func (cli *OneClient) VerifyAndUpdateForToken() error {
 		cli.Token = newToken
 	}
 	return nil
-
 }

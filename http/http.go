@@ -2,38 +2,31 @@ package http
 
 import (
 	"crypto/tls"
-	"errors"
-	"fmt"
 	"io"
-	"mime"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
 	"strings"
 	"time"
 )
 
-type HttpClient struct {
+// HTTPClient wraps http.Client with a shared User-Agent and a lazily built
+// transport tuned for long-running transfers.
+type HTTPClient struct {
 	http.Client
 	transport *http.Transport
 	UserAgent string
 }
 
-var (
-	SimpleHttpClient = NewHttpClient()
-)
+// SimpleHTTPClient is a shared default client.
+var SimpleHTTPClient = NewHTTPClient()
 
-func NewHttpClient() *HttpClient {
-	hc := HttpClient{
+// NewHTTPClient creates an HTTPClient with sensible timeouts and a cookie jar.
+func NewHTTPClient() *HTTPClient {
+	hc := HTTPClient{
 		Client: http.Client{
 			Timeout: 400 * time.Second,
-			/*
-				CheckRedirect: func(req *http.Request, via []*http.Request) error {
-					return http.ErrUseLastResponse
-				},
-			*/
 		},
 		UserAgent: "Mozilla/5.0 (Windows NT 10.0; WOW64; rv:88.0) Gecko/20100101 Firefox/88.0",
 	}
@@ -41,7 +34,8 @@ func NewHttpClient() *HttpClient {
 	hc.lazyInit()
 	return &hc
 }
-func (h *HttpClient) lazyInit() {
+
+func (h *HTTPClient) lazyInit() {
 	if h.transport == nil {
 		h.transport = &http.Transport{
 			Proxy: nil,
@@ -63,22 +57,8 @@ func (h *HttpClient) lazyInit() {
 	}
 }
 
-//such as http://127.0.0.1:8080
-// socks5://127.0.0.1:1080
-func (hc *HttpClient) SetProxy(proxy string) error {
-	if proxy == "" {
-		hc.transport.Proxy = nil
-		return nil
-	}
-	u, err := url.Parse(proxy)
-	if err != nil {
-		return err
-	}
-	hc.transport.Proxy = http.ProxyURL(u)
-	return nil
-}
-
-func HandleRespon2String(resp *http.Response, err error) (string, error) {
+// ResponseToString reads the whole response body into a string.
+func ResponseToString(resp *http.Response, err error) (string, error) {
 	if resp == nil {
 		return "", err
 	}
@@ -92,7 +72,8 @@ func HandleRespon2String(resp *http.Response, err error) (string, error) {
 	}
 	return string(buff), nil
 }
-func (hc *HttpClient) setHttpBaseHeader(req *http.Request, header map[string]string) {
+
+func (hc *HTTPClient) setHTTPBaseHeader(req *http.Request, header map[string]string) {
 	if header != nil {
 		for k, v := range header {
 			req.Header.Add(k, v)
@@ -115,16 +96,16 @@ func (hc *HttpClient) setHttpBaseHeader(req *http.Request, header map[string]str
 		req.Header.Add("User-Agent", hc.UserAgent)
 	}
 }
-func (hc *HttpClient) setHttpContentType(req *http.Request, method string) {
+
+func (hc *HTTPClient) setHTTPContentType(req *http.Request, method string) {
 	//last check header
 	if method == "POST" && req.Header.Get("Content-Type") == "" {
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	}
 }
-func (hc *HttpClient) HttpSimpleFormPost(URL string, postBody map[string]string) (*http.Response, error) {
-	return hc.HttpFormPost(URL, nil, postBody)
-}
-func (hc *HttpClient) HttpFormPost(URL string, header map[string]string, postBody map[string]string) (*http.Response, error) {
+
+// HTTPFormPost posts form-encoded fields.
+func (hc *HTTPClient) HTTPFormPost(URL string, header map[string]string, postBody map[string]string) (*http.Response, error) {
 	tpostBody := map[string][]string{}
 	if postBody != nil {
 		for k, v := range postBody {
@@ -132,15 +113,16 @@ func (hc *HttpClient) HttpFormPost(URL string, header map[string]string, postBod
 		}
 	}
 	var body url.Values = tpostBody
-	return hc.HttpPost(URL, header, body.Encode())
+	return hc.HTTPPost(URL, header, body.Encode())
 }
-func (hc *HttpClient) HttpPost(URL string, header map[string]string, postBody string) (*http.Response, error) {
-	return hc.HttpRequest("POST", URL, header, postBody)
+
+// HTTPPost issues an HTTP POST with the given string body.
+func (hc *HTTPClient) HTTPPost(URL string, header map[string]string, postBody string) (*http.Response, error) {
+	return hc.HTTPRequest("POST", URL, header, postBody)
 }
-func (hc *HttpClient) HttpSimpleGet(URL string) (*http.Response, error) {
-	return hc.HttpGet(URL, nil, nil)
-}
-func (hc *HttpClient) HttpGet(URL string, header map[string]string, params map[string]string) (*http.Response, error) {
+
+// HTTPGet issues an HTTP GET, appending params to the query string when given.
+func (hc *HTTPClient) HTTPGet(URL string, header map[string]string, params map[string]string) (*http.Response, error) {
 	paramsVal := url.Values{}
 	realURL := URL
 	if params != nil {
@@ -149,62 +131,18 @@ func (hc *HttpClient) HttpGet(URL string, header map[string]string, params map[s
 		}
 		realURL = URL + "?" + paramsVal.Encode()
 	}
-	return hc.HttpRequest("GET", realURL, header, "")
+	return hc.HTTPRequest("GET", realURL, header, "")
 }
-func (hc *HttpClient) HttpRequest(method string, URL string, header map[string]string, postBody string) (*http.Response, error) {
+
+// HTTPRequest issues an arbitrary HTTP method.
+func (hc *HTTPClient) HTTPRequest(method string, URL string, header map[string]string, postBody string) (*http.Response, error) {
 	md := strings.ToUpper(method)
 	req, err := http.NewRequest(md, URL, strings.NewReader(postBody))
 	if err != nil {
 		return nil, err
 	}
-	hc.setHttpBaseHeader(req, header)
-	hc.setHttpContentType(req, md)
+	hc.setHTTPBaseHeader(req, header)
+	hc.setHTTPContentType(req, md)
 	resp, err := hc.Do(req)
 	return resp, err
-}
-
-func GetDownloadFileName(u *url.URL, fileName string, disposition string) string {
-	if disposition != "" && strings.Contains(disposition, "filename") {
-		_, params, err := mime.ParseMediaType(disposition)
-		if err == nil {
-			return params["filename"]
-		}
-	}
-	fn := strings.TrimSpace(fileName)
-	if fn != "" {
-		return fn
-	}
-	idx := strings.LastIndex(u.Path, "/")
-	if idx > -1 {
-		if u.Path == "/" {
-			return "index.html"
-		}
-		return u.Path[idx+1:]
-	}
-	return u.Path
-}
-
-func (hc *HttpClient) HttpGetDownloadFile(URL string, fileName string) error {
-	resp, err := hc.HttpGet(URL, nil, nil)
-	if err != nil {
-		return errors.New(fmt.Sprint("download ", URL, " failed", err))
-	}
-	defer resp.Body.Close()
-	//contentType := resp.Header.Get("Content-Type")
-	sc := resp.StatusCode / 100
-	if sc != 2 {
-		return fmt.Errorf("request errors,status code = %d  status =  %s", sc, resp.Status)
-	}
-
-	realName := GetDownloadFileName(resp.Request.URL, fileName, resp.Header.Get("Content-Disposition"))
-	dst, err := os.Create(realName)
-	if err != nil {
-		return errors.New(fmt.Sprint("create file ", fileName, " failed ", err))
-	}
-	defer dst.Close()
-	_, err = io.Copy(dst, resp.Body)
-	if err != nil {
-		return fmt.Errorf("write file %s to failed err = %s", fileName, err.Error())
-	}
-	return nil
 }

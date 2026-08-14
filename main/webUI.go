@@ -14,11 +14,11 @@ import (
 
 func AutoUpdateToken(cli *one.OneClient) {
 	for {
-		cli.VerifyAndUpdateForToken()
+		cli.VerifyAndUpdateToken()
 		time.Sleep(time.Minute)
 	}
 }
-func OutHtml(body string) string {
+func wrapHTML(body string) string {
 	html := `
 	<html>
 		<head>
@@ -33,7 +33,7 @@ func OutHtml(body string) string {
 	return ret
 }
 
-func CmdLS(dirPath string, cli *one.OneClient) string {
+func renderDirHTML(dirPath string, cli *one.OneClient) string {
 	var buff bytes.Buffer
 	ret, err := cli.APIListFilesByPath(cli.CurDriveID, dirPath)
 	if dirPath != "/" {
@@ -49,8 +49,8 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 			s := fmt.Sprintf(`<div><a href="/vfs?path=%s">%s/</a></div>`, dirPath+v.Name, v.Name)
 			buff.WriteString(s)
 		} else {
-			//s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size), url.QueryEscape(v.DownloadURL))
-			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s </div>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.ViewHumanShow(v.Size))
+			//s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s <a href="/play?id=%s" target="blank">play</a>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.FormatSize(v.Size), url.QueryEscape(v.DownloadURL))
+			s := fmt.Sprintf(`<div><a href="%s" target="blank">%s</a> %s </div>`, one.AcceleratedURL(v.DownloadURL), v.Name, one.FormatSize(v.Size))
 			buff.WriteString(s)
 		}
 		//buff.WriteString("<br />")
@@ -58,7 +58,7 @@ func CmdLS(dirPath string, cli *one.OneClient) string {
 	return buff.String()
 }
 
-func StartWebSerivce(address string, https bool) {
+func StartWebService(address string, https bool) {
 	var err1 error
 	cli, err1 := one.NewOneClient()
 	if err1 != nil {
@@ -74,13 +74,13 @@ func StartWebSerivce(address string, https bool) {
 		if strLen > 1 && dirPath[strLen-1] == '/' {
 			dirPath = dirPath[:strLen-1]
 		}
-		err := cli.VerifyAndUpdateForToken()
+		err := cli.VerifyAndUpdateToken()
 		if err != nil {
 			w.Write([]byte(err.Error()))
 			return
 		}
-		body := CmdLS(dirPath, cli)
-		html := OutHtml(body)
+		body := renderDirHTML(dirPath, cli)
+		html := wrapHTML(body)
 		w.Write([]byte(html))
 	})
 	http.HandleFunc("/play", func(w http.ResponseWriter, r *http.Request) {
@@ -91,15 +91,15 @@ func StartWebSerivce(address string, https bool) {
 		</video>
 		`
 		body := fmt.Sprintf(bodyTmp, one.AcceleratedURL(dirPath))
-		html := OutHtml(body)
+		html := wrapHTML(body)
 		w.Write([]byte(html))
 	})
 
-	dm := one.NewDM()
+	dm := one.NewDownloadManager()
 	go dm.Start()
 	http.HandleFunc("/task", func(w http.ResponseWriter, r *http.Request) {
 		dirPath := utils.GetQueryParamByKey(r, "path")
-		err := cli.VerifyAndUpdateForToken()
+		err := cli.VerifyAndUpdateToken()
 		if err != nil {
 			w.Write([]byte(err.Error()))
 		} else {
@@ -123,7 +123,7 @@ func StartWebSerivce(address string, https bool) {
 	}
 }
 
-func genWebdavHandle(cli *one.OneClient) *webdav.Handler {
+func genWebDAVHandle(cli *one.OneClient) *webdav.Handler {
 	//TODO
 	go AutoUpdateToken(cli)
 	wh := new(webdav.Handler)
@@ -138,7 +138,7 @@ func genWebdavHandle(cli *one.OneClient) *webdav.Handler {
 	return wh
 
 }
-func StartWebdavService(address string, user string, passwd string, cert string, key string, oneDriveSourceList string) {
+func StartWebDAVService(address string, user string, passwd string, cert string, key string, oneDriveSourceList string) {
 	oneList := strings.Split(oneDriveSourceList, ";")
 	for _, oneUser := range oneList {
 		oneUser = strings.TrimSpace(oneUser)
@@ -150,7 +150,7 @@ func StartWebdavService(address string, user string, passwd string, cert string,
 		if err1 != nil {
 			panic(err1.Error())
 		}
-		wh := genWebdavHandle(cli)
+		wh := genWebDAVHandle(cli)
 		http.HandleFunc("/"+cli.UserName+"/", func(w http.ResponseWriter, req *http.Request) {
 			//need check user and password
 			if user != "" {

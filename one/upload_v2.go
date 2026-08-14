@@ -91,7 +91,7 @@ type URLUploadTask struct {
 	URL         string
 	FileSize    int64
 	CurPosition int64
-	HTTPClient  *chttp.HttpClient
+	HTTPClient  *chttp.HTTPClient
 }
 
 func (task *URLUploadTask) Name() string {
@@ -112,7 +112,7 @@ func (task *URLUploadTask) Close() error {
 
 func (task *URLUploadTask) Init() error {
 	wk := new(DWorker)
-	wk.HTTPCli = task.HTTPClient
+	wk.HTTPClient = task.HTTPClient
 	fileName, fileSize, isRange, err := wk.GetDownloadFileInfo(task.URL, "")
 	if err != nil {
 		return err
@@ -130,10 +130,10 @@ func (task *URLUploadTask) SeekPosition(position int64) error {
 
 func (task *URLUploadTask) getDataBlock(buff *bytes.Buffer, start int64, end int64) error {
 	rangeHeader := fmt.Sprintf("bytes=%d-%d", start, end)
-	core.Println("header range :", rangeHeader)
+	core.DebugPrintln("header range :", rangeHeader)
 	header := map[string]string{}
 	header["RANGE"] = rangeHeader
-	resp, err := task.HTTPClient.HttpGet(task.URL, header, nil)
+	resp, err := task.HTTPClient.HTTPGet(task.URL, header, nil)
 	if err != nil {
 		return errors.New(fmt.Sprint("download ", task.URL, " failed", err))
 	}
@@ -146,8 +146,8 @@ func (task *URLUploadTask) getDataBlock(buff *bytes.Buffer, start int64, end int
 	if sc != 2 {
 		return errors.New("request errors,status code = " + strconv.Itoa(sc) + "," + resp.Status)
 	}
-	core.Println("response header range :", strConRge)
-	core.Println("start :", start)
+	core.DebugPrintln("response header range :", strConRge)
+	core.DebugPrintln("start :", start)
 	_, err = io.Copy(buff, resp.Body)
 	return err
 }
@@ -190,7 +190,7 @@ func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64,
 	fileSizeStr := strconv.FormatInt(fileSize, 10)
 	bytes := "bytes " + start + "-" + end + "/" + fileSizeStr
 	header["Content-Range"] = bytes
-	core.Println("bytes = ", bytes)
+	core.DebugPrintln("bytes = ", bytes)
 	//add header
 	for k, v := range header {
 		req.Header.Add(k, v)
@@ -201,12 +201,12 @@ func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64,
 		return nil, err
 	}
 	if resp.StatusCode == 201 {
-		err = HandleResponForParseAPI(resp, err, objs)
+		err = HandleResponseForParseAPI(resp, err, objs)
 		if err == nil {
 			return nil, nil
 		}
 	} else {
-		err = HandleResponForParseAPI(resp, err, objs)
+		err = HandleResponseForParseAPI(resp, err, objs)
 	}
 	//fix issue 4
 	if err != nil {
@@ -215,7 +215,7 @@ func (cli *OneClient) apiUploadSourcePart(task UploadTask, URL string, st int64,
 	dis := time.Now().Sub(t0)
 	v := len / dis.Milliseconds() * 1000
 	remainTime := (fileSize - ed - 1) / v
-	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.Name(), ViewHumanShow(v), ViewPercent(ed+1, fileSize), remainTime, ViewHumanShow(fileSize))
+	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.Name(), FormatSize(v), FormatPercent(ed+1, fileSize), remainTime, FormatSize(fileSize))
 
 	return objs, nil
 }
@@ -225,30 +225,30 @@ func (cli *OneClient) APIUploadSourcePart(task UploadTask, URL string, position 
 		return err
 	}
 	var buff bytes.Buffer
-	buff.Grow(int(BLOCK))
+	buff.Grow(int(blockSize))
 	remain := fileSize - position
-	blist := remain / BLOCK
+	blist := remain / blockSize
 	for i := int64(0); i < blist; i++ {
-		start := position + i*BLOCK
-		end := start + BLOCK - 1
-		core.Println("start = ", start, "  end = ", end)
+		start := position + i*blockSize
+		end := start + blockSize - 1
+		core.DebugPrintln("start = ", start, "  end = ", end)
 		_, err := cli.apiUploadSourcePart(task, URL, start, end, fileSize, &buff)
 		buff.Reset()
 		if err != nil {
 			return err
 		}
 	}
-	last := remain % BLOCK
+	last := remain % blockSize
 	if last != 0 {
 		start := fileSize - last
 		end := fileSize - 1
-		core.Println("start = ", start, "  end = ", end)
+		core.DebugPrintln("start = ", start, "  end = ", end)
 		_, err = cli.apiUploadSourcePart(task, URL, start, end, fileSize, &buff)
 		if err != nil {
 			return err
 		}
 	}
-	core.Println("filesize ", fileSize)
+	core.DebugPrintln("filesize ", fileSize)
 	return nil
 }
 func (cli *OneClient) UploadSourceTryAgain(source string, driveID string, oneDriveParentPath string, tryLimit int) error {
@@ -279,7 +279,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 	oneDrivePath := filepath.Join(oneDriveParentPath, task.Name())
 	//find tmp file
 	parent := task.Parent()
-	fileInfo := filepath.Join(parent, task.Name()+TMP_FILE_FIX)
+	fileInfo := filepath.Join(parent, task.Name()+tmpFileSuffix)
 	infoTmp, err := os.Stat(fileInfo)
 
 	position := int64(0)
@@ -292,7 +292,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 		}
 		uploadURL = string(text)
 		uploadURL = strings.TrimSpace(uploadURL)
-		core.Println("URL === ", uploadURL)
+		core.DebugPrintln("URL === ", uploadURL)
 		ret, err := cli.APIGetUploadFileInfo(uploadURL)
 		if err != nil {
 			return err
@@ -320,7 +320,7 @@ func (cli *OneClient) UploadSource(source string, driveID string, oneDriveParent
 	//The upload and transfer function is turned off by default.
 
 	//uploadURL = AcceleratedURL(uploadURL)
-	core.Println("upload url =", uploadURL)
+	core.DebugPrintln("upload url =", uploadURL)
 
 	err = cli.APIUploadSourcePart(task, uploadURL, position, task.Size())
 	if err != nil {

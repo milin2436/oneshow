@@ -13,7 +13,7 @@ import (
 )
 
 func Download(cli *one.OneClient, downloadDir string, dirPath string, a bool) {
-	dirPath = one.GetOnedrivePath(dirPath)
+	dirPath = one.GetOneDrivePath(dirPath)
 	info, err := cli.APIGetFile(cli.CurDriveID, dirPath)
 	if err != nil {
 		fmt.Println("err =", err)
@@ -33,8 +33,8 @@ func setFuns(ct *cmd.Context) {
 	//#ls
 	pro := new(cmd.Program)
 	pro.Name = "ls"
-	pro.Desc = "list onedrive directory contents"
-	pro.Usage = "usage: " + pro.Name + " [OPTION] path"
+	pro.Desc = "list OneDrive directory contents"
+	pro.Usage = pro.Name + " [OPTION] path"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -47,12 +47,12 @@ func setFuns(ct *cmd.Context) {
 		Name:      "l",
 		LongName:  "list",
 		NeedValue: false,
-		Desc:      "list files detail"}
+		Desc:      "list files in detail"}
 	pro.ParamDefMap["d"] = &cmd.ParamDef{
 		Name:      "d",
 		LongName:  "direct_url",
 		NeedValue: false,
-		Desc:      "list files direct url"}
+		Desc:      "print a wget command for each file to download it"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -87,11 +87,19 @@ func setFuns(ct *cmd.Context) {
 				if v.Folder != nil {
 					Name = v.Name + "/"
 				}
-				fmt.Printf("%-10s%-16s%-28s%-100s\n", one.ViewHumanShow(v.Size), v.CreatedBy.User.DisplayName, dsTime, Name)
+				fmt.Printf("%-10s%-16s%-28s%-100s\n", one.FormatSize(v.Size), v.CreatedBy.User.DisplayName, dsTime, Name)
 			}
 		} else if ct.ParamGroupMap["d"] != nil {
 			for _, v := range ret.Value {
-				fmt.Printf("[%s]%-200s\n\n", v.Name, v.DownloadURL)
+				if v.Folder != nil {
+					fmt.Printf("%s/\n", v.Name)
+					continue
+				}
+				if v.DownloadURL == "" {
+					fmt.Printf("%s\n", v.Name)
+					continue
+				}
+				fmt.Printf("wget -O %q %q\n", v.Name, v.DownloadURL)
 			}
 
 		} else {
@@ -111,7 +119,7 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	pro.Name = "rm"
 	pro.Desc = "move a file or directory to the trash"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]  [file|dir]"
+	pro.Usage = pro.Name + " [OPTION] [file|dir]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -150,8 +158,8 @@ func setFuns(ct *cmd.Context) {
 	//#info
 	pro = new(cmd.Program)
 	pro.Name = "info"
-	pro.Desc = "show onedrive info"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]  file"
+	pro.Desc = "show OneDrive account information"
+	pro.Usage = pro.Name + " [OPTION] file"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -178,19 +186,19 @@ func setFuns(ct *cmd.Context) {
 		}
 		fmt.Printf("%-20s%s\n", "drive type", drive.DriveType)
 		fmt.Printf("%-20s%s\n", "state", drive.Quota.State)
-		fmt.Printf("%-20s%s\n", "ower", drive.Owner.User.DisplayName)
-		fmt.Printf("%-20s%s\n", "total", one.ViewHumanShow(drive.Quota.Total))
-		fmt.Printf("%-20s%s\n", "used", one.ViewHumanShow(drive.Quota.Used))
-		fmt.Printf("%-20s%s\n", "Remaing", one.ViewHumanShow(drive.Quota.Remaining))
-		fmt.Printf("%-20s%s\n", "trash", one.ViewHumanShow(drive.Quota.Deleted))
+		fmt.Printf("%-20s%s\n", "owner", drive.Owner.User.DisplayName)
+		fmt.Printf("%-20s%s\n", "total", one.FormatSize(drive.Quota.Total))
+		fmt.Printf("%-20s%s\n", "used", one.FormatSize(drive.Quota.Used))
+		fmt.Printf("%-20s%s\n", "remaining", one.FormatSize(drive.Quota.Remaining))
+		fmt.Printf("%-20s%s\n", "trash", one.FormatSize(drive.Quota.Deleted))
 	}
 
 	//next download
 	//#d
 	pro = new(cmd.Program)
 	pro.Name = "d"
-	pro.Desc = "download a file or dir or URL to local"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]  [file | dir | URL]"
+	pro.Desc = "download a file, directory, or URL to the local machine"
+	pro.Usage = pro.Name + " [OPTION] [file | dir | URL]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -202,12 +210,12 @@ func setFuns(ct *cmd.Context) {
 		Name:      "d",
 		LongName:  "downloadDir",
 		NeedValue: true,
-		Desc:      "download dir,default current dir"}
+		Desc:      "download directory; default is the current directory"}
 	pro.ParamDefMap["a"] = &cmd.ParamDef{
 		Name:      "a",
 		LongName:  "acceleration",
 		NeedValue: false,
-		Desc:      "Speed in downloads through CDN"}
+		Desc:      "speed up downloads via CDN"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -238,8 +246,8 @@ func setFuns(ct *cmd.Context) {
 		URL := strings.ToLower(dirPath)
 		if strings.HasPrefix(URL, "http://") || strings.HasPrefix(URL, "https://") {
 			wk := one.NewDWorker()
-			wk.HTTPCli = cli.HTTPClient
-			wk.AuthSve = cli
+			wk.HTTPClient = cli.HTTPClient
+			wk.AuthService = cli
 			wk.DownloadDir = downloadDir
 			wk.Proxy = a
 			err := wk.Download(dirPath)
@@ -255,8 +263,8 @@ func setFuns(ct *cmd.Context) {
 	//#auth
 	pro = new(cmd.Program)
 	pro.Name = "auth"
-	pro.Desc = "get a auth for new user"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]"
+	pro.Desc = "authorize a new user"
+	pro.Usage = pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -275,59 +283,12 @@ func setFuns(ct *cmd.Context) {
 		cli.DoAutoForNewUser()
 	}
 
-	//next upload little text file
-	/*
-		pro = new(cmd.Program)
-		pro.Name = "upload"
-		pro.Desc = "upload a little text file to onedrive"
-		pro.Usage = "usage: " + pro.Name + " [OPTION]"
-		pro.ParamDefMap = map[string]*cmd.ParamDef{}
-		pro.ParamDefMap["h"] = &cmd.ParamDef{
-			Name:      "h",
-			LongName:  "help",
-			NeedValue: false,
-			Desc:      "print help"}
-		pro.ParamDefMap["f"] = &cmd.ParamDef{
-			Name:      "f",
-			LongName:  "fileName",
-			NeedValue: true,
-			Desc:      "fileName in onedrive,need full path, such as: /root/a.txt"}
-		pro.ParamDefMap["c"] = &cmd.ParamDef{
-			Name:      "c",
-			LongName:  "content",
-			NeedValue: true,
-			Desc:      "file content"}
-
-		ct.CmdMap[pro.Name] = pro
-		pro.Cmd = func(pro *cmd.Program) {
-			if ct.ParamGroupMap["h"] != nil {
-				cmd.PrintCmdHelp(pro)
-				return
-			}
-			fn := ct.ParamGroupMap["f"]
-			content := ct.ParamGroupMap["c"]
-			if fn == nil || fn.Value == "" {
-				fmt.Println("file name can not be empty")
-				return
-			}
-			if content == nil || content.Value == "" {
-				fmt.Println("content can not be empty")
-				return
-			}
-			cli := one.NewOneClient()
-			_, err := cli.APIUploadText(cli.CurDriveID, fn.Value, content.Value)
-			if err != nil {
-				fmt.Println("upload file to failed")
-			}
-		}
-	*/
-
-	//next upload local file or dir
+	//next upload
 	pro = new(cmd.Program)
 	//#u
 	pro.Name = "u"
 	pro.Desc = "upload a file or directory to OneDrive"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]"
+	pro.Usage = pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
 		Name:      "h",
@@ -338,17 +299,17 @@ func setFuns(ct *cmd.Context) {
 		Name:      "f",
 		LongName:  "fileName",
 		NeedValue: true,
-		Desc:      "copy to OneDrive directory, such as: /root/path/to"}
+		Desc:      "OneDrive destination directory, e.g. /root/path/to"}
 	pro.ParamDefMap["s"] = &cmd.ParamDef{
 		Name:      "s",
 		LongName:  "src",
 		NeedValue: true,
-		Desc:      "source file,local file or directory."}
+		Desc:      "source file or directory on the local machine"}
 	pro.ParamDefMap["t"] = &cmd.ParamDef{
 		Name:      "t",
 		LongName:  "thread",
 		NeedValue: true,
-		Desc:      "setup uploaded thread count,default 4."}
+		Desc:      "number of upload threads; default 4"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -400,8 +361,8 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#web
 	pro.Name = "web"
-	pro.Desc = "run this http super serivce (beta version)"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]"
+	pro.Desc = "run the HTTP service (beta)"
+	pro.Usage = pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -413,12 +374,12 @@ func setFuns(ct *cmd.Context) {
 		Name:      "s",
 		LongName:  "https",
 		NeedValue: false,
-		Desc:      "enable https service ,need cacert.pem ,privkey.pem on current dir"}
+		Desc:      "enable HTTPS; requires cacert.pem and privkey.pem in the current directory"}
 	pro.ParamDefMap["u"] = &cmd.ParamDef{
 		Name:      "u",
 		LongName:  "url",
 		NeedValue: true,
-		Desc:      "setup service address for this service,as -u :5555"}
+		Desc:      "listen address for the service, e.g. -u :5555"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -436,13 +397,13 @@ func setFuns(ct *cmd.Context) {
 		if ct.ParamGroupMap["s"] != nil {
 			https = true
 		}
-		StartWebSerivce(address, https)
+		StartWebService(address, https)
 	}
 	pro = new(cmd.Program)
 	//#webdav
 	pro.Name = "webdav"
-	pro.Desc = "run webdav service for onedirve (only read)"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]"
+	pro.Desc = "run a WebDAV service for OneDrive (read-only)"
+	pro.Usage = pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -454,32 +415,32 @@ func setFuns(ct *cmd.Context) {
 		Name:      "u",
 		LongName:  "url",
 		NeedValue: true,
-		Desc:      "setup listen address for this service,as -u :5555"}
+		Desc:      "listen address, e.g. -u :5555"}
 	pro.ParamDefMap["user"] = &cmd.ParamDef{
 		Name:      "user",
 		LongName:  "user",
 		NeedValue: true,
-		Desc:      "setup webdav user"}
+		Desc:      "WebDAV username"}
 	pro.ParamDefMap["passwd"] = &cmd.ParamDef{
 		Name:      "passwd",
 		LongName:  "password",
 		NeedValue: true,
-		Desc:      "setup webdav password"}
+		Desc:      "WebDAV password"}
 	pro.ParamDefMap["c"] = &cmd.ParamDef{
 		Name:      "c",
 		LongName:  "cert",
 		NeedValue: true,
-		Desc:      "setup https cert file"}
+		Desc:      "HTTPS certificate file"}
 	pro.ParamDefMap["k"] = &cmd.ParamDef{
 		Name:      "k",
 		LongName:  "key",
 		NeedValue: true,
-		Desc:      "setup webdav key file"}
+		Desc:      "WebDAV private key file"}
 	pro.ParamDefMap["ss"] = &cmd.ParamDef{
 		Name:      "ss",
 		LongName:  "serverlist",
 		NeedValue: true,
-		Desc:      "server list as 0all;all1"}
+		Desc:      "semicolon-separated server list, e.g. 0all;all1"}
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
 		if ct.ParamGroupMap["h"] != nil {
@@ -518,13 +479,13 @@ func setFuns(ct *cmd.Context) {
 			ss = ssp.Value
 		}
 		fmt.Println("sources : ", ss)
-		StartWebdavService(address, user, passwd, cert, key, ss)
+		StartWebDAVService(address, user, passwd, cert, key, ss)
 	}
 	pro = new(cmd.Program)
 	//#users
 	pro.Name = "users"
-	pro.Desc = "list of logged-in users"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]"
+	pro.Desc = "list logged-in users"
+	pro.Usage = pro.Name + " [OPTION]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -545,7 +506,7 @@ func setFuns(ct *cmd.Context) {
 			return
 		}
 		if len(li) == 0 {
-			fmt.Println("pls call saveUser command for save a session")
+			fmt.Println("run 'saveUser' first to save a session")
 			return
 		}
 		for _, user := range li {
@@ -557,7 +518,7 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	pro.Name = "su"
 	pro.Desc = "switch to another logged-in user"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]... [UserName]"
+	pro.Usage = pro.Name + " [OPTION]... [username]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -589,8 +550,8 @@ func setFuns(ct *cmd.Context) {
 	//next program
 	pro = new(cmd.Program)
 	pro.Name = "saveUser"
-	pro.Desc = "save current user to name"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]... [UserName]"
+	pro.Desc = "save the current user under a name"
+	pro.Usage = pro.Name + " [OPTION]... [username]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -621,8 +582,8 @@ func setFuns(ct *cmd.Context) {
 	//next program
 	pro = new(cmd.Program)
 	pro.Name = "who"
-	pro.Desc = "show current user name"
-	pro.Usage = "usage: " + pro.Name
+	pro.Desc = "show the current username"
+	pro.Usage = pro.Name
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -650,8 +611,8 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#search
 	pro.Name = "search"
-	pro.Desc = "search for files by keywords"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]... key"
+	pro.Desc = "search OneDrive for files by keyword"
+	pro.Usage = pro.Name + " [OPTION]... [keyword]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -663,12 +624,12 @@ func setFuns(ct *cmd.Context) {
 		Name:      "d",
 		LongName:  "detail",
 		NeedValue: false,
-		Desc:      "show full path of file"}
+		Desc:      "show the full path of each result"}
 	pro.ParamDefMap["dn"] = &cmd.ParamDef{
 		Name:      "dn",
 		LongName:  "download",
 		NeedValue: false,
-		Desc:      "download file for search result,default save files to search-dn directory,and depend -d flag"}
+		Desc:      "download matching files to the search-dn directory (requires -d)"}
 
 	ct.CmdMap[pro.Name] = pro
 	pro.Cmd = func(pro *cmd.Program) {
@@ -723,7 +684,10 @@ func setFuns(ct *cmd.Context) {
 			fmt.Printf("%s\n", Name)
 			if detail && isDownload {
 				if !isCreateDefaultDir {
-					os.MkdirAll(defaultDirName, 0770)
+					if err := os.MkdirAll(defaultDirName, 0770); err != nil {
+						fmt.Println("create download directory failed: ", err)
+						return
+					}
 					isCreateDefaultDir = true
 				}
 				pindex := strings.Index(OName, "/root:/")
@@ -738,8 +702,8 @@ func setFuns(ct *cmd.Context) {
 	pro = new(cmd.Program)
 	//#mv
 	pro.Name = "mv"
-	pro.Desc = "move file to other directory"
-	pro.Usage = "usage: " + pro.Name + " [OPTION]... directory"
+	pro.Desc = "move a file to another directory"
+	pro.Usage = pro.Name + " [OPTION]... [directory]"
 	pro.ParamDefMap = map[string]*cmd.ParamDef{}
 
 	pro.ParamDefMap["h"] = &cmd.ParamDef{
@@ -751,7 +715,7 @@ func setFuns(ct *cmd.Context) {
 		Name:      "f",
 		LongName:  "file",
 		NeedValue: true,
-		Desc:      "will move file"}
+		Desc:      "file to move"}
 
 	pro.ParamDefMap["n"] = &cmd.ParamDef{
 		Name:      "n",
@@ -786,7 +750,7 @@ func setFuns(ct *cmd.Context) {
 			return
 		}
 		file := fp.Value
-		dir = one.GetOnedrivePath(dir)
+		dir = one.GetOneDrivePath(dir)
 		ifile, err := cli.APIGetFile(cli.CurDriveID, file)
 		if err != nil {
 			fmt.Println("file is wrong,err = ", err)

@@ -17,9 +17,8 @@ import (
 	"github.com/milin2436/oneshow/core"
 )
 
-const k320 int64 = 327680
-const BLOCK int64 = 10 * k320
-const TMP_FILE_FIX = ".one.tmp"
+const blockSize int64 = 10 * 320 * 1024
+const tmpFileSuffix = ".one.tmp"
 
 type CurTask struct {
 	FullPath    string
@@ -32,8 +31,8 @@ type CurTask struct {
 func (cli *OneClient) APIGetUploadFileInfo(URL string) (*UploadURLResult, error) {
 	header := cli.SetOneDriveAPIToken()
 	objs := new(UploadURLResult)
-	resp, err := cli.HTTPClient.HttpGet(URL, header, nil)
-	err = HandleResponForParseAPI(resp, err, objs)
+	resp, err := cli.HTTPClient.HTTPGet(URL, header, nil)
+	err = HandleResponseForParseAPI(resp, err, objs)
 	if err != nil {
 		return nil, err
 	}
@@ -61,13 +60,13 @@ func (cli *OneClient) APICreateUploadSession(driveID string, path string) (*Uplo
 	"@microsoft.graph.conflictBehavior": "rename"
   }
 }`
-	core.Println("APIListFilesByPath request url = ", URL)
-	core.Println("body =", bodyTmp)
+	core.DebugPrintln("APIListFilesByPath request url = ", URL)
+	core.DebugPrintln("body =", bodyTmp)
 
 	header := cli.SetOneDriveAPIToken()
 	objs := new(UploadURLResult)
-	resp, err := cli.HTTPClient.HttpPost(URL, header, bodyTmp)
-	err = HandleResponForParseAPI(resp, err, objs)
+	resp, err := cli.HTTPClient.HTTPPost(URL, header, bodyTmp)
+	err = HandleResponseForParseAPI(resp, err, objs)
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +93,7 @@ func (cli *OneClient) apiUploadFilePart(task *CurTask, URL string, file *os.File
 	fileSizeStr := strconv.FormatInt(fileSize, 10)
 	bytes := "bytes " + start + "-" + end + "/" + fileSizeStr
 	header["Content-Range"] = bytes
-	core.Println("bytes = ", bytes)
+	core.DebugPrintln("bytes = ", bytes)
 	//add header
 	for k, v := range header {
 		req.Header.Add(k, v)
@@ -106,17 +105,17 @@ func (cli *OneClient) apiUploadFilePart(task *CurTask, URL string, file *os.File
 		return nil, err
 	}
 	if resp.StatusCode == 201 {
-		err = HandleResponForParseAPI(resp, err, objs)
+		err = HandleResponseForParseAPI(resp, err, objs)
 		if err == nil {
 			return nil, nil
 		}
 	} else {
-		err = HandleResponForParseAPI(resp, err, objs)
+		err = HandleResponseForParseAPI(resp, err, objs)
 	}
 	dis := time.Now().Sub(t0)
 	v := len / dis.Milliseconds() * 1000
 	remainTime := (fileSize - ed - 1) / v
-	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.FileName, ViewHumanShow(v), ViewPercent(ed+1, fileSize), remainTime, ViewHumanShow(fileSize))
+	fmt.Printf("file = %s;%s/s done %s need time %ds filesize:%s\n", task.FileName, FormatSize(v), FormatPercent(ed+1, fileSize), remainTime, FormatSize(fileSize))
 
 	if err != nil {
 		return nil, err
@@ -129,30 +128,30 @@ func (cli *OneClient) APIUploadFilePart(task *CurTask, URL string, file *os.File
 		return err
 	}
 	var buff bytes.Buffer
-	buff.Grow(int(BLOCK))
+	buff.Grow(int(blockSize))
 	remain := fileSize - position
-	blist := remain / BLOCK
+	blist := remain / blockSize
 	for i := int64(0); i < blist; i++ {
-		start := position + i*BLOCK
-		end := start + BLOCK - 1
-		core.Println("start = ", start, "  end = ", end)
+		start := position + i*blockSize
+		end := start + blockSize - 1
+		core.DebugPrintln("start = ", start, "  end = ", end)
 		_, err := cli.apiUploadFilePart(task, URL, file, start, end, fileSize, &buff)
 		buff.Reset()
 		if err != nil {
 			return err
 		}
 	}
-	last := remain % BLOCK
+	last := remain % blockSize
 	if last != 0 {
 		start := fileSize - last
 		end := fileSize - 1
-		core.Println("start = ", start, "  end = ", end)
+		core.DebugPrintln("start = ", start, "  end = ", end)
 		_, err = cli.apiUploadFilePart(task, URL, file, start, end, fileSize, &buff)
 		if err != nil {
 			return err
 		}
 	}
-	core.Println("filesize ", fileSize)
+	core.DebugPrintln("filesize ", fileSize)
 	return nil
 }
 func parsePositionFromTmp(ret *UploadURLResult) (int64, error) {
@@ -160,10 +159,10 @@ func parsePositionFromTmp(ret *UploadURLResult) (int64, error) {
 		return 0, errors.New("NextExpectedRanges is empty")
 	}
 	arr := ret.NextExpectedRanges[0]
-	core.Println("first range =  ", arr)
+	core.DebugPrintln("first range =  ", arr)
 	arrList := strings.Split(arr, "-")
 	startStr := arrList[0]
-	core.Println("start position = ", startStr)
+	core.DebugPrintln("start position = ", startStr)
 	return strconv.ParseInt(startStr, 10, 64)
 }
 
@@ -179,10 +178,10 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 	if info.IsDir() {
 		return errors.New("file is dir : " + absSrcFile)
 	}
-	core.Println("full path = ", absSrcFile)
+	core.DebugPrintln("full path = ", absSrcFile)
 	//find tmp file
 	parent := filepath.Dir(absSrcFile)
-	fileInfo := filepath.Join(parent, info.Name()+TMP_FILE_FIX)
+	fileInfo := filepath.Join(parent, info.Name()+tmpFileSuffix)
 	infoTmp, err := os.Stat(fileInfo)
 
 	position := int64(0)
@@ -195,7 +194,7 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 		}
 		uploadURL = string(text)
 		uploadURL = strings.TrimSpace(uploadURL)
-		core.Println("URL === ", uploadURL)
+		core.DebugPrintln("URL === ", uploadURL)
 		ret, err := cli.APIGetUploadFileInfo(uploadURL)
 		if err != nil {
 			return err
@@ -234,11 +233,11 @@ func (cli *OneClient) UploadBigFile(srcFile string, driveID string, path string)
 
 func (cli *OneClient) BatchUpload(threadSize int, curDir string, descDir string) {
 	tm := core.NewTaskManager()
-	tm.SetActiveWorkerMaxSize(threadSize)
+	tm.SetWorkerMaxSize(threadSize)
 
 	cli.batchUpload1(tm, curDir, descDir)
 
-	tm.Wait4Completion()
+	tm.Wait()
 }
 func (cli *OneClient) batchUpload1(tm *core.TaskManager, curDir string, descDir string) {
 	fileList, err := os.ReadDir(curDir)
